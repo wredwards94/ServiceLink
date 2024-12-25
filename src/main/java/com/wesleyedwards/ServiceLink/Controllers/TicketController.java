@@ -48,4 +48,9 @@ public class TicketController {
     public ResponseEntity<List<Ticket>> getAllTicketsByPriority(@PathVariable String priority) {
         return ResponseEntity.ok(ticketService.getAllTicketsByPriority(priority));
     }
+
+    @GetMapping("/search")
+    public ResponseEntity<List<Ticket>> searchTickets(@RequestParam String keyword) {
+        return ResponseEntity.ok(ticketService.searchTickets(keyword));
+    }
 }

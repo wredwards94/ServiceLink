@@ -18,4 +18,6 @@ public interface TicketService {
     List<Ticket> getAllTicketsByStatus(String status);
 
     List<Ticket> getAllTicketsByPriority(String priority);
+
+    List<Ticket> searchTickets(String keyword);
 }

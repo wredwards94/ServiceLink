@@ -86,6 +86,11 @@ public class TicketServiceImpl implements TicketService {
         return ticketRepository.findAllTicketsByPriority(priority);
     }
 
+    @Override
+    public List<Ticket> searchTickets(String keyword) {
+        return ticketRepository.searchByKeyword(keyword);
+    }
+
     private Ticket checkTicketExists(Long id) {
         Optional<Ticket> optionalTicket = ticketRepository.findById(id);
 
