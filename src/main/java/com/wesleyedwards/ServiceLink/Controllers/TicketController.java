@@ -4,7 +4,6 @@ import com.wesleyedwards.ServiceLink.Entities.Ticket;
 import com.wesleyedwards.ServiceLink.Service.TicketService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -38,5 +37,15 @@ public class TicketController {
     @PutMapping("/{id}")
     public ResponseEntity<Ticket> updateTicket(@PathVariable Long id, @RequestBody Ticket updatedTicket) {
         return ResponseEntity.ok(ticketService.updateTicket(id, updatedTicket));
+    }
+
+    @GetMapping("/status/{status}")
+    public ResponseEntity<List<Ticket>> getAllTicketByStatus(@PathVariable String status) {
+        return ResponseEntity.ok(ticketService.getAllTicketsByStatus(status));
+    }
+
+    @GetMapping("/priority/{priority}")
+    public ResponseEntity<List<Ticket>> getAllTicketsByPriority(@PathVariable String priority) {
+        return ResponseEntity.ok(ticketService.getAllTicketsByPriority(priority));
     }
 }

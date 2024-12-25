@@ -14,4 +14,8 @@ public interface TicketService {
     Ticket deleteTicketById(Long id);
 
     Ticket updateTicket(Long id, Ticket updatedTicket);
+
+    List<Ticket> getAllTicketsByStatus(String status);
+
+    List<Ticket> getAllTicketsByPriority(String priority);
 }

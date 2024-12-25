@@ -8,8 +8,6 @@ import org.springframework.stereotype.Service;
 
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
-import java.time.ZoneOffset;
-import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Optional;
 
@@ -42,11 +40,11 @@ public class TicketServiceImpl implements TicketService {
 
     @Override
     public Ticket getTicketById(Long id) {
-        Optional<Ticket> optionalTicket = ticketRepository.findById(id);
+//        Optional<Ticket> optionalTicket = ticketRepository.findById(id);
+//
+//        if(optionalTicket.isEmpty()) throw new RuntimeException("Ticket not found");
 
-        if(optionalTicket.isEmpty()) throw new RuntimeException("Ticket not found");
-
-        return optionalTicket.get();
+        return checkTicketExists(id);
     }
 
     @Override
@@ -61,11 +59,11 @@ public class TicketServiceImpl implements TicketService {
 
     @Override
     public Ticket updateTicket(Long id, Ticket updatedTicket) {
-        Optional<Ticket> optionalTicket = ticketRepository.findById(id);
+//        Optional<Ticket> optionalTicket = ticketRepository.findById(id);
+//
+//        if(optionalTicket.isEmpty()) throw new RuntimeException("Ticket not found");
 
-        if(optionalTicket.isEmpty()) throw new RuntimeException("Ticket not found");
-
-        Ticket ticket = optionalTicket.get();
+        Ticket ticket = checkTicketExists(id);
 
         ticket.setTitle(updatedTicket.getTitle());
         ticket.setDescription(updatedTicket.getDescription());
@@ -76,5 +74,23 @@ public class TicketServiceImpl implements TicketService {
         ticket.setUpdatedAt(Timestamp.valueOf(LocalDateTime.now().withNano(0)));
 
         return ticketRepository.saveAndFlush(ticket);
+    }
+
+    @Override
+    public List<Ticket> getAllTicketsByStatus(String status) {
+        return ticketRepository.findAllTicketsByStatus(status);
+    }
+
+    @Override
+    public List<Ticket> getAllTicketsByPriority(String priority) {
+        return ticketRepository.findAllTicketsByPriority(priority);
+    }
+
+    private Ticket checkTicketExists(Long id) {
+        Optional<Ticket> optionalTicket = ticketRepository.findById(id);
+
+        if(optionalTicket.isEmpty()) throw new RuntimeException("Ticket not found");
+
+        return optionalTicket.get();
     }
 }
