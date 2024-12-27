@@ -1,5 +1,6 @@
 package com.wesleyedwards.ServiceLink.Entities;
 
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -27,12 +28,12 @@ public class User {
     private Profile profile;
 
     @OneToMany(mappedBy = "assignedTo")
-//    @JsonManagedReference
+    @JsonManagedReference
 //    @JsonIdentityInfo()
     private List<Ticket> assignedTickets;
 
     @OneToMany(mappedBy = "requester")
-//    @JsonManagedReference
+    @JsonManagedReference
     private List<Ticket> requestedTickets;
 
     @Column(nullable = false)

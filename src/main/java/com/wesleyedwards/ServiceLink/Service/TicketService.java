@@ -1,5 +1,6 @@
 package com.wesleyedwards.ServiceLink.Service;
 
+import com.wesleyedwards.ServiceLink.Dtos.TicketRequestDto;
 import com.wesleyedwards.ServiceLink.Entities.Ticket;
 
 import java.util.List;
@@ -8,7 +9,7 @@ import java.util.UUID;
 public interface TicketService {
 
     List<Ticket> getAllTickets();
-    Ticket createTicket(Ticket createdTicket, UUID requesterId);
+    Ticket createTicket(TicketRequestDto createdTicket, UUID requesterId);
 
     Ticket getTicketById(Long id);
 

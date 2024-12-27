@@ -27,11 +27,11 @@ public class Ticket {
     private String category; // e.g., Technical, Billing
 
     @ManyToOne
-//    @JsonBackReference(value = "assignedTickets")
+    @JsonBackReference(value = "assignedTickets")
     private User assignedTo; // Agent assigned to the ticket
 
     @ManyToOne
-//    @JsonBackReference(value = "requestedTickets")
+    @JsonBackReference(value = "requestedTickets")
     private User requester;
 
     @CreationTimestamp

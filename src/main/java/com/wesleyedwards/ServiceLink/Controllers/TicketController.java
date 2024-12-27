@@ -1,5 +1,6 @@
 package com.wesleyedwards.ServiceLink.Controllers;
 
+import com.wesleyedwards.ServiceLink.Dtos.TicketRequestDto;
 import com.wesleyedwards.ServiceLink.Entities.Ticket;
 import com.wesleyedwards.ServiceLink.Service.TicketService;
 import lombok.RequiredArgsConstructor;
@@ -21,8 +22,8 @@ public class TicketController {
         return ResponseEntity.ok(ticketService.getAllTickets());
     }
 
-    @PostMapping("/newticket/{requesterId}")
-    public ResponseEntity<Ticket> createTicket(@RequestBody Ticket createdTicket, @RequestParam UUID requesterId) {
+    @PostMapping("/newticket/requester{requesterId}")
+    public ResponseEntity<Ticket> createTicket(@RequestBody TicketRequestDto createdTicket, @RequestParam UUID requesterId) {
         return ResponseEntity.ok(ticketService.createTicket(createdTicket, requesterId));
     }
 

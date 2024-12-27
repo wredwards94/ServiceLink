@@ -1,8 +1,10 @@
 package com.wesleyedwards.ServiceLink.Service.ServiceImpl;
 
+import com.wesleyedwards.ServiceLink.Dtos.TicketRequestDto;
 import com.wesleyedwards.ServiceLink.Entities.Ticket;
 import com.wesleyedwards.ServiceLink.Entities.User;
 import com.wesleyedwards.ServiceLink.Exceptions.NotFoundException;
+import com.wesleyedwards.ServiceLink.Mappers.TicketMapper;
 import com.wesleyedwards.ServiceLink.Repositories.TicketRepository;
 import com.wesleyedwards.ServiceLink.Repositories.UserRepository;
 import com.wesleyedwards.ServiceLink.Service.TicketService;
@@ -20,6 +22,7 @@ import java.util.UUID;
 public class TicketServiceImpl implements TicketService {
     private final TicketRepository ticketRepository;
     private final UserRepository userRepository;
+    private final TicketMapper ticketMapper;
 
     @Override
     public List<Ticket> getAllTickets() {
@@ -27,18 +30,19 @@ public class TicketServiceImpl implements TicketService {
     }
 
     @Override
-    public Ticket createTicket(Ticket createdTicket, UUID requesterID) {
-        Ticket newTicket = new Ticket();
+    public Ticket createTicket(TicketRequestDto createdTicket, UUID requesterID) {
+        Ticket newTicket = ticketMapper.requestDtoToEntity(createdTicket);
         User foundUser = checkUserExists(requesterID);
-
-        newTicket.setTitle(createdTicket.getTitle());
-        newTicket.setDescription(createdTicket.getDescription());
-        newTicket.setStatus(createdTicket.getStatus());
-        newTicket.setPriority(createdTicket.getPriority());
-        newTicket.setCategory(createdTicket.getCategory());
         newTicket.setRequester(foundUser);
+//
+//        newTicket.setTitle(createdTicket.getTitle());
+//        newTicket.setDescription(createdTicket.getDescription());
+//        newTicket.setStatus(createdTicket.getStatus());
+//        newTicket.setPriority(createdTicket.getPriority());
+//        newTicket.setCategory(createdTicket.getCategory());
+//        newTicket.setRequester(foundUser);
 //        newTicket.setCreatedAt();
-        newTicket.setUpdatedAt(Timestamp.valueOf(LocalDateTime.now().withNano(0)));
+//        newTicket.setUpdatedAt(Timestamp.valueOf(LocalDateTime.now().withNano(0)));
 
         ticketRepository.saveAndFlush(newTicket);
         return newTicket;
