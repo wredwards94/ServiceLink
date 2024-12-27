@@ -7,6 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequiredArgsConstructor
@@ -61,6 +62,11 @@ public class TicketController {
             @RequestParam(required = false) String priority) {
         List<Ticket> tickets = ticketService.advancedSearch(keyword, status, priority);
         return ResponseEntity.ok(tickets);
+    }
+
+    @PutMapping("/{id}/assign")
+    public ResponseEntity<Ticket> assignTicketToUser(@PathVariable Long id, @RequestParam UUID userId) {
+        return ResponseEntity.ok(ticketService.assignTicketToUser(id, userId));
     }
 
 }

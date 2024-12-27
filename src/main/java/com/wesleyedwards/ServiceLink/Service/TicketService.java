@@ -3,6 +3,7 @@ package com.wesleyedwards.ServiceLink.Service;
 import com.wesleyedwards.ServiceLink.Entities.Ticket;
 
 import java.util.List;
+import java.util.UUID;
 
 public interface TicketService {
 
@@ -22,4 +23,6 @@ public interface TicketService {
     List<Ticket> searchTickets(String keyword);
 
     List<Ticket> advancedSearch(String keyword, String status, String priority);
+
+    Ticket assignTicketToUser(Long id, UUID userId);
 }

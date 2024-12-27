@@ -1,7 +1,9 @@
 package com.wesleyedwards.ServiceLink.Service.ServiceImpl;
 
 import com.wesleyedwards.ServiceLink.Entities.Ticket;
+import com.wesleyedwards.ServiceLink.Entities.User;
 import com.wesleyedwards.ServiceLink.Repositories.TicketRepository;
+import com.wesleyedwards.ServiceLink.Repositories.UserRepository;
 import com.wesleyedwards.ServiceLink.Service.TicketService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -10,12 +12,13 @@ import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
 public class TicketServiceImpl implements TicketService {
     private final TicketRepository ticketRepository;
-
+    private final UserRepository userRepository;
 
     @Override
     public List<Ticket> getAllTickets() {
@@ -94,6 +97,19 @@ public class TicketServiceImpl implements TicketService {
     @Override
     public List<Ticket> advancedSearch(String keyword, String status, String priority) {
         return ticketRepository.advancedSearch(keyword, status, priority);
+    }
+
+    @Override
+    public Ticket assignTicketToUser(Long id, UUID userId) {
+        Optional<Ticket> optionalTicket = ticketRepository.findById(id);
+        Optional<User> optionalUser = userRepository.findById(userId);
+
+        if(optionalTicket.isEmpty()) throw new RuntimeException("Ticket: " + id + " does not exist");
+        if(optionalUser.isEmpty()) throw new RuntimeException("User: " + userId + " does not exist");
+
+        optionalTicket.get().setAssignedTo(optionalUser.get());
+
+        return ticketRepository.saveAndFlush(optionalTicket.get());
     }
 
     private Ticket checkTicketExists(Long id) {

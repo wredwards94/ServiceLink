@@ -1,5 +1,6 @@
 package com.wesleyedwards.ServiceLink.Entities;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
 import java.sql.Timestamp;
 import lombok.Getter;
@@ -16,15 +17,18 @@ public class Ticket {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
     private String title;
     private String description;
     private String status; // Open, In Progress, Resolved
     private String priority; // Low, Medium, High
     private String category; // e.g., Technical, Billing
+
+    @ManyToOne
+    @JsonBackReference
+    private User assignedTo; // Agent assigned to the ticket
 //    @ManyToOne
 //    private User requester;
-    //    @ManyToOne
-//    private User assignedTo; // Agent assigned to the ticket
 //    private LocalDateTime createdAt;
 //    private LocalDateTime updatedAt;
     @CreationTimestamp
