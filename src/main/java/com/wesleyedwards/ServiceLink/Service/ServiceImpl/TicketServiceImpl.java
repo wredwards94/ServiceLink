@@ -2,6 +2,7 @@ package com.wesleyedwards.ServiceLink.Service.ServiceImpl;
 
 import com.wesleyedwards.ServiceLink.Entities.Ticket;
 import com.wesleyedwards.ServiceLink.Entities.User;
+import com.wesleyedwards.ServiceLink.Exceptions.NotFoundException;
 import com.wesleyedwards.ServiceLink.Repositories.TicketRepository;
 import com.wesleyedwards.ServiceLink.Repositories.UserRepository;
 import com.wesleyedwards.ServiceLink.Service.TicketService;
@@ -26,16 +27,18 @@ public class TicketServiceImpl implements TicketService {
     }
 
     @Override
-    public Ticket createTicket(Ticket createdTicket) {
+    public Ticket createTicket(Ticket createdTicket, UUID requesterID) {
         Ticket newTicket = new Ticket();
+        User foundUser = checkUserExists(requesterID);
 
         newTicket.setTitle(createdTicket.getTitle());
         newTicket.setDescription(createdTicket.getDescription());
         newTicket.setStatus(createdTicket.getStatus());
         newTicket.setPriority(createdTicket.getPriority());
         newTicket.setCategory(createdTicket.getCategory());
+        newTicket.setRequester(foundUser);
 //        newTicket.setCreatedAt();
-        newTicket.setUpdatedAt(newTicket.getCreatedAt());
+        newTicket.setUpdatedAt(Timestamp.valueOf(LocalDateTime.now().withNano(0)));
 
         ticketRepository.saveAndFlush(newTicket);
         return newTicket;
@@ -52,12 +55,13 @@ public class TicketServiceImpl implements TicketService {
 
     @Override
     public Ticket deleteTicketById(Long id) {
-        Optional<Ticket> optionalTicket = ticketRepository.findById(id);
+//        Optional<Ticket> optionalTicket = ticketRepository.findById(id);
 
-        if(optionalTicket.isEmpty()) throw new RuntimeException("Ticket not found");
+        Ticket foundTicket = checkTicketExists(id);
+//        if(optionalTicket.isEmpty()) throw new RuntimeException("Ticket not found");
 
         ticketRepository.deleteById(id);
-        return optionalTicket.get();
+        return foundTicket;
     }
 
     @Override
@@ -74,7 +78,7 @@ public class TicketServiceImpl implements TicketService {
         ticket.setPriority(updatedTicket.getPriority());
         ticket.setCategory(updatedTicket.getCategory());
 //        ticket.setCreatedAt();
-        ticket.setUpdatedAt(Timestamp.valueOf(LocalDateTime.now().withNano(0)));
+//        ticket.setUpdatedAt(Timestamp.valueOf(LocalDateTime.now().withNano(0)));
 
         return ticketRepository.saveAndFlush(ticket);
     }
@@ -101,22 +105,33 @@ public class TicketServiceImpl implements TicketService {
 
     @Override
     public Ticket assignTicketToUser(Long id, UUID userId) {
-        Optional<Ticket> optionalTicket = ticketRepository.findById(id);
-        Optional<User> optionalUser = userRepository.findById(userId);
+//        Optional<Ticket> optionalTicket = ticketRepository.findById(id);
+//        Optional<User> optionalUser = userRepository.findById(userId);
 
-        if(optionalTicket.isEmpty()) throw new RuntimeException("Ticket: " + id + " does not exist");
-        if(optionalUser.isEmpty()) throw new RuntimeException("User: " + userId + " does not exist");
+        Ticket foundTicket = checkTicketExists(id);
+        User foundUser = checkUserExists(userId);
 
-        optionalTicket.get().setAssignedTo(optionalUser.get());
+        foundTicket.setAssignedTo(foundUser);
+//        foundTicket.setUpdatedAt(Timestamp.valueOf(LocalDateTime.now().withNano(0)));
 
-        return ticketRepository.saveAndFlush(optionalTicket.get());
+        return ticketRepository.saveAndFlush(foundTicket);
     }
 
     private Ticket checkTicketExists(Long id) {
         Optional<Ticket> optionalTicket = ticketRepository.findById(id);
 
-        if(optionalTicket.isEmpty()) throw new RuntimeException("Ticket not found");
+        if(optionalTicket.isEmpty()) throw new NotFoundException("Ticket " + id + " not found");
+
+//        System.out.println(optionalTicket.get().getAssignedTo().getUserId());
 
         return optionalTicket.get();
+    }
+
+    private User checkUserExists(UUID userId) {
+        Optional<User> optionalUser = userRepository.findById(userId);
+
+        if(optionalUser.isEmpty()) throw new NotFoundException("User: " + userId + " does not exist");
+
+        return optionalUser.get();
     }
 }

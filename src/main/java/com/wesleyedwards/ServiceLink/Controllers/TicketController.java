@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.UUID;
 
+@CrossOrigin
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/tickets")
@@ -20,9 +21,9 @@ public class TicketController {
         return ResponseEntity.ok(ticketService.getAllTickets());
     }
 
-    @PostMapping("/newticket")
-    public ResponseEntity<Ticket> createTicket(@RequestBody Ticket createdTicket) {
-        return ResponseEntity.ok(ticketService.createTicket(createdTicket));
+    @PostMapping("/newticket/{requesterId}")
+    public ResponseEntity<Ticket> createTicket(@RequestBody Ticket createdTicket, @RequestParam UUID requesterId) {
+        return ResponseEntity.ok(ticketService.createTicket(createdTicket, requesterId));
     }
 
     @GetMapping("/{id}")
@@ -64,8 +65,8 @@ public class TicketController {
         return ResponseEntity.ok(tickets);
     }
 
-    @PutMapping("/{id}/assign")
-    public ResponseEntity<Ticket> assignTicketToUser(@PathVariable Long id, @RequestParam UUID userId) {
+    @PutMapping("/{id}/assign/{userId}")
+    public ResponseEntity<Ticket> assignTicketToUser(@PathVariable Long id, @PathVariable UUID userId) {
         return ResponseEntity.ok(ticketService.assignTicketToUser(id, userId));
     }
 

@@ -8,7 +8,7 @@ import java.util.UUID;
 public interface TicketService {
 
     List<Ticket> getAllTickets();
-    Ticket createTicket(Ticket createdTicket);
+    Ticket createTicket(Ticket createdTicket, UUID requesterId);
 
     Ticket getTicketById(Long id);
 

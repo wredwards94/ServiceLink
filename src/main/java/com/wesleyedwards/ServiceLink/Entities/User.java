@@ -1,11 +1,11 @@
 package com.wesleyedwards.ServiceLink.Entities;
 
+import com.fasterxml.jackson.annotation.JsonIdentityInfo;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import lombok.ToString;
 
 import java.util.List;
 import java.util.UUID;
@@ -19,6 +19,7 @@ public class User {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(columnDefinition = "UUID", updatable = false)
     private UUID userId;
 
     @Embedded
@@ -28,6 +29,14 @@ public class User {
     private Profile profile;
 
     @OneToMany(mappedBy = "assignedTo")
-    @JsonManagedReference
-    private List<Ticket> tickets;
+//    @JsonManagedReference
+//    @JsonIdentityInfo()
+    private List<Ticket> assignedTickets;
+
+    @OneToMany(mappedBy = "requester")
+//    @JsonManagedReference
+    private List<Ticket> requestedTickets;
+
+    @Column(nullable = false)
+    private boolean isDisabled = false;
 }
