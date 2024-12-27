@@ -12,7 +12,17 @@ public interface TicketRepository extends JpaRepository<Ticket, Long> {
     List<Ticket> findAllTicketsByStatus(String status);
     List<Ticket> findAllTicketsByPriority(String priority);
 
+    //This query is to handle pagination for large datasets
     @Query("SELECT t FROM Ticket t WHERE LOWER(t.title) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
             "OR LOWER(t.description) LIKE LOWER(CONCAT('%', :keyword, '%'))")
     List<Ticket> searchByKeyword(String keyword);
+
+    //Advanced search query
+    @Query("SELECT t FROM Ticket t WHERE " +
+            "(LOWER(t.title) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
+            "OR LOWER(t.description) LIKE LOWER(CONCAT('%', :keyword, '%'))) " +
+            "AND (:status IS NULL OR t.status = :status) " +
+            "AND (:priority IS NULL OR t.priority = :priority)")
+    List<Ticket> advancedSearch(String keyword, String status, String priority);
+
 }

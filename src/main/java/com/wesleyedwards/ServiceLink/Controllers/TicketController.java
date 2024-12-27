@@ -53,4 +53,14 @@ public class TicketController {
     public ResponseEntity<List<Ticket>> searchTickets(@RequestParam String keyword) {
         return ResponseEntity.ok(ticketService.searchTickets(keyword));
     }
+
+    @GetMapping("/search/advanced")
+    public ResponseEntity<List<Ticket>> advancedSearch(
+            @RequestParam String keyword,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String priority) {
+        List<Ticket> tickets = ticketService.advancedSearch(keyword, status, priority);
+        return ResponseEntity.ok(tickets);
+    }
+
 }

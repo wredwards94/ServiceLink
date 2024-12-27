@@ -20,4 +20,6 @@ public interface TicketService {
     List<Ticket> getAllTicketsByPriority(String priority);
 
     List<Ticket> searchTickets(String keyword);
+
+    List<Ticket> advancedSearch(String keyword, String status, String priority);
 }

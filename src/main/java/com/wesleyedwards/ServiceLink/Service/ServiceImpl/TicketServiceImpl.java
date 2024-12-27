@@ -91,6 +91,11 @@ public class TicketServiceImpl implements TicketService {
         return ticketRepository.searchByKeyword(keyword);
     }
 
+    @Override
+    public List<Ticket> advancedSearch(String keyword, String status, String priority) {
+        return ticketRepository.advancedSearch(keyword, status, priority);
+    }
+
     private Ticket checkTicketExists(Long id) {
         Optional<Ticket> optionalTicket = ticketRepository.findById(id);
 
