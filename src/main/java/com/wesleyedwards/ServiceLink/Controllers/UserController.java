@@ -1,5 +1,7 @@
 package com.wesleyedwards.ServiceLink.Controllers;
 
+import com.wesleyedwards.ServiceLink.Dtos.UserRequestDto;
+import com.wesleyedwards.ServiceLink.Dtos.UserResponseDto;
 import com.wesleyedwards.ServiceLink.Entities.Credentials;
 import com.wesleyedwards.ServiceLink.Entities.User;
 import com.wesleyedwards.ServiceLink.Service.UserService;
@@ -17,7 +19,7 @@ public class UserController {
     private final UserService userService;
 
     @PostMapping("/auth/register")
-    public ResponseEntity<User> createUser(@RequestBody User newUser) {
+    public ResponseEntity<UserResponseDto> createUser(@RequestBody UserRequestDto newUser) {
         return ResponseEntity.ok(userService.createUser(newUser));
     }
 
