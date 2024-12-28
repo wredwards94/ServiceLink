@@ -1,8 +1,11 @@
 package com.wesleyedwards.ServiceLink.Controllers;
 
+import com.wesleyedwards.ServiceLink.Dtos.CommentRequestDto;
+import com.wesleyedwards.ServiceLink.Dtos.CommentResponseDto;
 import com.wesleyedwards.ServiceLink.Dtos.TicketRequestDto;
 import com.wesleyedwards.ServiceLink.Dtos.TicketResponseDto;
 import com.wesleyedwards.ServiceLink.Entities.Ticket;
+import com.wesleyedwards.ServiceLink.Service.CommentService;
 import com.wesleyedwards.ServiceLink.Service.TicketService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -17,6 +20,7 @@ import java.util.UUID;
 @RequestMapping("/api/tickets")
 public class TicketController {
     private final TicketService ticketService;
+    private final CommentService commentService;
 
     @GetMapping
     public ResponseEntity<List<TicketResponseDto>> getAllTickets() {
@@ -77,4 +81,11 @@ public class TicketController {
         return ResponseEntity.ok(ticketService.getTicketsByRequester(requesterId));
     }
 
+    @PostMapping("/{ticketId}/comments")
+    public ResponseEntity<CommentResponseDto> addCommentToTicket(
+            @PathVariable Long ticketId,
+            @RequestParam UUID authorId,
+            @RequestBody CommentRequestDto commentRequest) {
+        return ResponseEntity.ok(commentService.addCommentToTicket(ticketId, authorId, commentRequest));
+    }
 }
