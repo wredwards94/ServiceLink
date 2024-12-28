@@ -23,9 +23,9 @@ public class TicketController {
         return ResponseEntity.ok(ticketService.getAllTickets());
     }
 
-    @PostMapping("/newticket/requester{requesterId}")
+    @PostMapping("/newticket/requester/{requesterId}")
     public ResponseEntity<TicketResponseDto> createTicket(@RequestBody TicketRequestDto createdTicket,
-                                                          @RequestParam UUID requesterId) {
+                                                          @PathVariable UUID requesterId) {
         return ResponseEntity.ok(ticketService.createTicket(createdTicket, requesterId));
     }
 
@@ -70,6 +70,11 @@ public class TicketController {
     @PutMapping("/{id}/assign/{userId}")
     public ResponseEntity<TicketResponseDto> assignTicketToUser(@PathVariable Long id, @PathVariable UUID userId) {
         return ResponseEntity.ok(ticketService.assignTicketToUser(id, userId));
+    }
+
+    @GetMapping("/requester/{requesterId}")
+    public ResponseEntity<List<TicketResponseDto>> getTicketsByRequester(@PathVariable UUID requesterId) {
+        return ResponseEntity.ok(ticketService.getTicketsByRequester(requesterId));
     }
 
 }

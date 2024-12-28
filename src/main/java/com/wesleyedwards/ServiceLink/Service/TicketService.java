@@ -27,4 +27,6 @@ public interface TicketService {
     List<TicketResponseDto> advancedSearch(String keyword, String status, String priority);
 
     TicketResponseDto assignTicketToUser(Long id, UUID userId);
+
+    List<TicketResponseDto> getTicketsByRequester(UUID requesterId);
 }

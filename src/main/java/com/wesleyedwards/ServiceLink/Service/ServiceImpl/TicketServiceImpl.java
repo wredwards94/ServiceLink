@@ -122,6 +122,13 @@ public class TicketServiceImpl implements TicketService {
         return ticketMapper.entityToResponseDto(ticketRepository.saveAndFlush(foundTicket));
     }
 
+    @Override
+    public List<TicketResponseDto> getTicketsByRequester(UUID requesterId) {
+        User foundUser = checkUserExists(requesterId);
+
+        return ticketMapper.entitiesToResponseDtos(ticketRepository.findAllByRequester(requesterId));
+    }
+
     private Ticket checkTicketExists(Long id) {
         Optional<Ticket> optionalTicket = ticketRepository.findById(id);
 

@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.UUID;
 
 @Repository
 public interface TicketRepository extends JpaRepository<Ticket, Long> {
@@ -24,5 +25,8 @@ public interface TicketRepository extends JpaRepository<Ticket, Long> {
             "AND (:status IS NULL OR t.status = :status) " +
             "AND (:priority IS NULL OR t.priority = :priority)")
     List<Ticket> advancedSearch(String keyword, String status, String priority);
+
+    @Query("SELECT t FROM Ticket t WHERE t.requester.userId = :requesterId")
+    List<Ticket> findAllByRequester(UUID requesterId);
 
 }
