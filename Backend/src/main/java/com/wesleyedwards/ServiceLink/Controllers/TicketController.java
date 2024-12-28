@@ -27,9 +27,9 @@ public class TicketController {
         return ResponseEntity.ok(ticketService.getAllTickets());
     }
 
-    @PostMapping("/newticket/requester/{requesterId}")
+    @PostMapping("/newticket/requester")
     public ResponseEntity<TicketResponseDto> createTicket(@RequestBody TicketRequestDto createdTicket,
-                                                          @PathVariable UUID requesterId) {
+                                                          @RequestParam UUID requesterId) {
         return ResponseEntity.ok(ticketService.createTicket(createdTicket, requesterId));
     }
 
@@ -81,11 +81,16 @@ public class TicketController {
         return ResponseEntity.ok(ticketService.getTicketsByRequester(requesterId));
     }
 
-    @PostMapping("/{ticketId}/comments")
+    @PostMapping("/{ticketId}/comment")
     public ResponseEntity<CommentResponseDto> addCommentToTicket(
             @PathVariable Long ticketId,
             @RequestParam UUID authorId,
             @RequestBody CommentRequestDto commentRequest) {
         return ResponseEntity.ok(commentService.addCommentToTicket(ticketId, authorId, commentRequest));
+    }
+
+    @GetMapping("/{ticketId}/comments")
+    public ResponseEntity<List<CommentResponseDto>> getCommentsForTicket(@PathVariable Long ticketId) {
+        return ResponseEntity.ok(commentService.getCommentsForTicket(ticketId));
     }
 }

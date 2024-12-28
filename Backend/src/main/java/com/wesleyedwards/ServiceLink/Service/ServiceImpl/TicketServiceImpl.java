@@ -1,5 +1,6 @@
 package com.wesleyedwards.ServiceLink.Service.ServiceImpl;
 
+import com.wesleyedwards.ServiceLink.Dtos.CommentResponseDto;
 import com.wesleyedwards.ServiceLink.Dtos.TicketRequestDto;
 import com.wesleyedwards.ServiceLink.Dtos.TicketResponseDto;
 import com.wesleyedwards.ServiceLink.Entities.Ticket;
@@ -128,6 +129,14 @@ public class TicketServiceImpl implements TicketService {
 
         return ticketMapper.entitiesToResponseDtos(ticketRepository.findAllByRequester(requesterId));
     }
+
+//    @Override
+//    public List<CommentResponseDto> getCommentsForTicket(Long id) {
+//        checkTicketExists(id);
+//
+//
+//        return ;
+//    }
 
     private Ticket checkTicketExists(Long id) {
         Optional<Ticket> optionalTicket = ticketRepository.findById(id);

@@ -14,6 +14,7 @@ import com.wesleyedwards.ServiceLink.Service.CommentService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -41,6 +42,13 @@ public class CommentServiceImpl implements CommentService {
         ticketRepository.saveAndFlush(foundTicket);
 
         return commentMapper.entityToResponseDto(newComment);
+    }
+
+    @Override
+    public List<CommentResponseDto> getCommentsForTicket(Long ticketId) {
+        checkTicketExists(ticketId);
+
+        return commentMapper.entitiesToResponseDtos(commentRepository.findAllByTicketId(ticketId));
     }
 
     private Ticket checkTicketExists(Long id) {

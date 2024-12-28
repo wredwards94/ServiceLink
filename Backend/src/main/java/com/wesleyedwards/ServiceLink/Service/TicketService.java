@@ -1,5 +1,6 @@
 package com.wesleyedwards.ServiceLink.Service;
 
+import com.wesleyedwards.ServiceLink.Dtos.CommentResponseDto;
 import com.wesleyedwards.ServiceLink.Dtos.TicketRequestDto;
 import com.wesleyedwards.ServiceLink.Dtos.TicketResponseDto;
 import com.wesleyedwards.ServiceLink.Entities.Ticket;
@@ -29,4 +30,6 @@ public interface TicketService {
     TicketResponseDto assignTicketToUser(Long id, UUID userId);
 
     List<TicketResponseDto> getTicketsByRequester(UUID requesterId);
+
+//    List<CommentResponseDto> getCommentsForTicket(Long id);
 }
