@@ -1,6 +1,7 @@
 package com.wesleyedwards.ServiceLink.Controllers;
 
 import com.wesleyedwards.ServiceLink.Dtos.TicketRequestDto;
+import com.wesleyedwards.ServiceLink.Dtos.TicketResponseDto;
 import com.wesleyedwards.ServiceLink.Entities.Ticket;
 import com.wesleyedwards.ServiceLink.Service.TicketService;
 import lombok.RequiredArgsConstructor;
@@ -18,56 +19,56 @@ public class TicketController {
     private final TicketService ticketService;
 
     @GetMapping
-    public ResponseEntity<List<Ticket>> getAllTickets() {
+    public ResponseEntity<List<TicketResponseDto>> getAllTickets() {
         return ResponseEntity.ok(ticketService.getAllTickets());
     }
 
     @PostMapping("/newticket/requester{requesterId}")
-    public ResponseEntity<Ticket> createTicket(@RequestBody TicketRequestDto createdTicket, @RequestParam UUID requesterId) {
+    public ResponseEntity<TicketResponseDto> createTicket(@RequestBody TicketRequestDto createdTicket,
+                                                          @RequestParam UUID requesterId) {
         return ResponseEntity.ok(ticketService.createTicket(createdTicket, requesterId));
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Ticket> getTicketById(@PathVariable Long id) {
+    public ResponseEntity<TicketResponseDto> getTicketById(@PathVariable Long id) {
         return ResponseEntity.ok(ticketService.getTicketById(id));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Ticket> DeleteTicket(@PathVariable Long id) {
+    public ResponseEntity<TicketResponseDto> DeleteTicket(@PathVariable Long id) {
         return ResponseEntity.ok(ticketService.deleteTicketById(id));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Ticket> updateTicket(@PathVariable Long id, @RequestBody Ticket updatedTicket) {
+    public ResponseEntity<TicketResponseDto> updateTicket(@PathVariable Long id, @RequestBody TicketRequestDto updatedTicket) {
         return ResponseEntity.ok(ticketService.updateTicket(id, updatedTicket));
     }
 
     @GetMapping("/status/{status}")
-    public ResponseEntity<List<Ticket>> getAllTicketByStatus(@PathVariable String status) {
+    public ResponseEntity<List<TicketResponseDto>> getAllTicketByStatus(@PathVariable String status) {
         return ResponseEntity.ok(ticketService.getAllTicketsByStatus(status));
     }
 
     @GetMapping("/priority/{priority}")
-    public ResponseEntity<List<Ticket>> getAllTicketsByPriority(@PathVariable String priority) {
+    public ResponseEntity<List<TicketResponseDto>> getAllTicketsByPriority(@PathVariable String priority) {
         return ResponseEntity.ok(ticketService.getAllTicketsByPriority(priority));
     }
 
     @GetMapping("/search")
-    public ResponseEntity<List<Ticket>> searchTickets(@RequestParam String keyword) {
+    public ResponseEntity<List<TicketResponseDto>> searchTickets(@RequestParam String keyword) {
         return ResponseEntity.ok(ticketService.searchTickets(keyword));
     }
 
     @GetMapping("/search/advanced")
-    public ResponseEntity<List<Ticket>> advancedSearch(
+    public ResponseEntity<List<TicketResponseDto>> advancedSearch(
             @RequestParam String keyword,
             @RequestParam(required = false) String status,
             @RequestParam(required = false) String priority) {
-        List<Ticket> tickets = ticketService.advancedSearch(keyword, status, priority);
-        return ResponseEntity.ok(tickets);
+        return ResponseEntity.ok(ticketService.advancedSearch(keyword, status, priority));
     }
 
     @PutMapping("/{id}/assign/{userId}")
-    public ResponseEntity<Ticket> assignTicketToUser(@PathVariable Long id, @PathVariable UUID userId) {
+    public ResponseEntity<TicketResponseDto> assignTicketToUser(@PathVariable Long id, @PathVariable UUID userId) {
         return ResponseEntity.ok(ticketService.assignTicketToUser(id, userId));
     }
 

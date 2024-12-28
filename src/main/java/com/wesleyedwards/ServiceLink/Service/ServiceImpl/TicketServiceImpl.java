@@ -1,6 +1,7 @@
 package com.wesleyedwards.ServiceLink.Service.ServiceImpl;
 
 import com.wesleyedwards.ServiceLink.Dtos.TicketRequestDto;
+import com.wesleyedwards.ServiceLink.Dtos.TicketResponseDto;
 import com.wesleyedwards.ServiceLink.Entities.Ticket;
 import com.wesleyedwards.ServiceLink.Entities.User;
 import com.wesleyedwards.ServiceLink.Exceptions.NotFoundException;
@@ -25,12 +26,12 @@ public class TicketServiceImpl implements TicketService {
     private final TicketMapper ticketMapper;
 
     @Override
-    public List<Ticket> getAllTickets() {
-        return ticketRepository.findAll();
+    public List<TicketResponseDto> getAllTickets() {
+        return ticketMapper.entitiesToResponseDtos(ticketRepository.findAll());
     }
 
     @Override
-    public Ticket createTicket(TicketRequestDto createdTicket, UUID requesterID) {
+    public TicketResponseDto createTicket(TicketRequestDto createdTicket, UUID requesterID) {
         Ticket newTicket = ticketMapper.requestDtoToEntity(createdTicket);
         User foundUser = checkUserExists(requesterID);
         newTicket.setRequester(foundUser);
@@ -45,70 +46,70 @@ public class TicketServiceImpl implements TicketService {
 //        newTicket.setUpdatedAt(Timestamp.valueOf(LocalDateTime.now().withNano(0)));
 
         ticketRepository.saveAndFlush(newTicket);
-        return newTicket;
+        return ticketMapper.entityToResponseDto(newTicket);
     }
 
     @Override
-    public Ticket getTicketById(Long id) {
+    public TicketResponseDto getTicketById(Long id) {
 //        Optional<Ticket> optionalTicket = ticketRepository.findById(id);
 //
 //        if(optionalTicket.isEmpty()) throw new RuntimeException("Ticket not found");
 
-        return checkTicketExists(id);
+        return ticketMapper.entityToResponseDto(checkTicketExists(id));
     }
 
     @Override
-    public Ticket deleteTicketById(Long id) {
+    public TicketResponseDto deleteTicketById(Long id) {
 //        Optional<Ticket> optionalTicket = ticketRepository.findById(id);
 
         Ticket foundTicket = checkTicketExists(id);
 //        if(optionalTicket.isEmpty()) throw new RuntimeException("Ticket not found");
 
         ticketRepository.deleteById(id);
-        return foundTicket;
+        return ticketMapper.entityToResponseDto(foundTicket);
     }
 
     @Override
-    public Ticket updateTicket(Long id, Ticket updatedTicket) {
+    public TicketResponseDto updateTicket(Long id, TicketRequestDto updatedTicket) {
 //        Optional<Ticket> optionalTicket = ticketRepository.findById(id);
 //
 //        if(optionalTicket.isEmpty()) throw new RuntimeException("Ticket not found");
 
         Ticket ticket = checkTicketExists(id);
 
-        ticket.setTitle(updatedTicket.getTitle());
-        ticket.setDescription(updatedTicket.getDescription());
-        ticket.setStatus(updatedTicket.getStatus());
-        ticket.setPriority(updatedTicket.getPriority());
-        ticket.setCategory(updatedTicket.getCategory());
+        ticket.setTitle(updatedTicket.title());
+        ticket.setDescription(updatedTicket.description());
+        ticket.setStatus(updatedTicket.status());
+        ticket.setPriority(updatedTicket.priority());
+        ticket.setCategory(updatedTicket.category());
 //        ticket.setCreatedAt();
 //        ticket.setUpdatedAt(Timestamp.valueOf(LocalDateTime.now().withNano(0)));
 
-        return ticketRepository.saveAndFlush(ticket);
+        return ticketMapper.entityToResponseDto(ticketRepository.saveAndFlush(ticket));
     }
 
     @Override
-    public List<Ticket> getAllTicketsByStatus(String status) {
-        return ticketRepository.findAllTicketsByStatus(status);
+    public List<TicketResponseDto> getAllTicketsByStatus(String status) {
+        return ticketMapper.entitiesToResponseDtos(ticketRepository.findAllTicketsByStatus(status));
     }
 
     @Override
-    public List<Ticket> getAllTicketsByPriority(String priority) {
-        return ticketRepository.findAllTicketsByPriority(priority);
+    public List<TicketResponseDto> getAllTicketsByPriority(String priority) {
+        return ticketMapper.entitiesToResponseDtos(ticketRepository.findAllTicketsByPriority(priority));
     }
 
     @Override
-    public List<Ticket> searchTickets(String keyword) {
-        return ticketRepository.searchByKeyword(keyword);
+    public List<TicketResponseDto> searchTickets(String keyword) {
+        return ticketMapper.entitiesToResponseDtos(ticketRepository.searchByKeyword(keyword));
     }
 
     @Override
-    public List<Ticket> advancedSearch(String keyword, String status, String priority) {
-        return ticketRepository.advancedSearch(keyword, status, priority);
+    public List<TicketResponseDto> advancedSearch(String keyword, String status, String priority) {
+        return ticketMapper.entitiesToResponseDtos(ticketRepository.advancedSearch(keyword, status, priority));
     }
 
     @Override
-    public Ticket assignTicketToUser(Long id, UUID userId) {
+    public TicketResponseDto assignTicketToUser(Long id, UUID userId) {
 //        Optional<Ticket> optionalTicket = ticketRepository.findById(id);
 //        Optional<User> optionalUser = userRepository.findById(userId);
 
@@ -118,7 +119,7 @@ public class TicketServiceImpl implements TicketService {
         foundTicket.setAssignedTo(foundUser);
 //        foundTicket.setUpdatedAt(Timestamp.valueOf(LocalDateTime.now().withNano(0)));
 
-        return ticketRepository.saveAndFlush(foundTicket);
+        return ticketMapper.entityToResponseDto(ticketRepository.saveAndFlush(foundTicket));
     }
 
     private Ticket checkTicketExists(Long id) {

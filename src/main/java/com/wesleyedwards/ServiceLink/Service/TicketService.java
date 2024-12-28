@@ -1,6 +1,7 @@
 package com.wesleyedwards.ServiceLink.Service;
 
 import com.wesleyedwards.ServiceLink.Dtos.TicketRequestDto;
+import com.wesleyedwards.ServiceLink.Dtos.TicketResponseDto;
 import com.wesleyedwards.ServiceLink.Entities.Ticket;
 
 import java.util.List;
@@ -8,22 +9,22 @@ import java.util.UUID;
 
 public interface TicketService {
 
-    List<Ticket> getAllTickets();
-    Ticket createTicket(TicketRequestDto createdTicket, UUID requesterId);
+    List<TicketResponseDto> getAllTickets();
+    TicketResponseDto createTicket(TicketRequestDto createdTicket, UUID requesterId);
 
-    Ticket getTicketById(Long id);
+    TicketResponseDto getTicketById(Long id);
 
-    Ticket deleteTicketById(Long id);
+    TicketResponseDto deleteTicketById(Long id);
 
-    Ticket updateTicket(Long id, Ticket updatedTicket);
+    TicketResponseDto updateTicket(Long id, TicketRequestDto updatedTicket);
 
-    List<Ticket> getAllTicketsByStatus(String status);
+    List<TicketResponseDto> getAllTicketsByStatus(String status);
 
-    List<Ticket> getAllTicketsByPriority(String priority);
+    List<TicketResponseDto> getAllTicketsByPriority(String priority);
 
-    List<Ticket> searchTickets(String keyword);
+    List<TicketResponseDto> searchTickets(String keyword);
 
-    List<Ticket> advancedSearch(String keyword, String status, String priority);
+    List<TicketResponseDto> advancedSearch(String keyword, String status, String priority);
 
-    Ticket assignTicketToUser(Long id, UUID userId);
+    TicketResponseDto assignTicketToUser(Long id, UUID userId);
 }

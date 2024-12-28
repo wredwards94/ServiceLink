@@ -1,5 +1,6 @@
 package com.wesleyedwards.ServiceLink.Service.ServiceImpl;
 
+import com.wesleyedwards.ServiceLink.Dtos.CredentialsRequestDto;
 import com.wesleyedwards.ServiceLink.Dtos.UserRequestDto;
 import com.wesleyedwards.ServiceLink.Dtos.UserResponseDto;
 import com.wesleyedwards.ServiceLink.Entities.Credentials;
@@ -34,17 +35,18 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public User login(Credentials credentials) {
-        Optional<User> optionalUser = userRepository.findByCredentialsUsername(credentials.getUsername());
+    public UserResponseDto login(CredentialsRequestDto credentials) {
+        Optional<User> optionalUser =
+                userRepository.findByCredentialsUsername(credentials.username());
 
-        if(optionalUser.isEmpty()) throw new NotFoundException("user: " + credentials.getUsername() + " does not exist");
-        if(!optionalUser.get().getCredentials().getPassword().equals(credentials.getPassword())) throw new BadRequestException("Invalid password");
+        if(optionalUser.isEmpty()) throw new NotFoundException("user: " + credentials.username() + " does not exist");
+        if(!optionalUser.get().getCredentials().getPassword().equals(credentials.password())) throw new BadRequestException("Invalid password");
 
-        return optionalUser.get();
+        return userMapper.entityToResponseDto(optionalUser.get());
     }
 
     @Override
-    public List<User> getAllUsers() {
-        return userRepository.findAll();
+    public List<UserResponseDto> getAllUsers() {
+        return userMapper.entitiesToResponseDtos(userRepository.findAll());
     }
 }
