@@ -11,12 +11,11 @@ export default async function fetchFromAPI(method: string, endpoint: string, bod
   try {
     const response = await fetch(url, options)
     const data = await response.json()
-    if (!response.ok) {
-      throw new Error(response.statusText)
-    }
-    return data
+    if (response.ok) {
+      return data
+    } else console.error('Error fetching data from API')
   } catch (error) {
     console.error(error)
-    return undefined
+    return error
   }
 }

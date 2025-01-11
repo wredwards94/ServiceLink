@@ -1,5 +1,6 @@
 import {Component, Input, Output} from '@angular/core';
 import {AuthService} from "../../services/auth.service";
+import { ButtonModule } from 'primeng/button';
 
 @Component({
   selector: 'app-login',
@@ -17,12 +18,12 @@ export class LoginComponent {
   //   this.username = username;
   //   this.password = password;
   // }
-
-  public login(username: string, password: string) {
-    console.log(username, password);
-    this.authService.login(username, password).then(r =>
+  async login() {
+    console.log(this.username, this.password);
+    this.authService.login(this.username, this.password).then(r =>
     {
       console.log(r);
+      return r;
     });
   }
 }

@@ -2,6 +2,6 @@
   <form >
     <input type="text" placeholder="Username" [(ngModel)]="username" [ngModelOptions]="{standalone: true}">
     <input type="password" placeholder="Password" [(ngModel)]="password" [ngModelOptions]="{standalone: true}">
-    <button type="submit" (click)="login(username, password)">Login</button>
+    <button [disabled]="!username || !password" pButton pRipple (click)="login()" label="Submit"></button>
   </form>
 </div>
