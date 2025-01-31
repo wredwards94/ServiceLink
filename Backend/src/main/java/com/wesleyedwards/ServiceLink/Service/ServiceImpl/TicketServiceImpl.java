@@ -10,6 +10,7 @@ import com.wesleyedwards.ServiceLink.Mappers.TicketMapper;
 import com.wesleyedwards.ServiceLink.Repositories.TicketRepository;
 import com.wesleyedwards.ServiceLink.Repositories.UserRepository;
 import com.wesleyedwards.ServiceLink.Service.TicketService;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -71,6 +72,7 @@ public class TicketServiceImpl implements TicketService {
     }
 
     @Override
+    @Transactional
     public TicketResponseDto updateTicket(Long id, TicketRequestDto updatedTicket) {
 //        Optional<Ticket> optionalTicket = ticketRepository.findById(id);
 //
@@ -128,6 +130,13 @@ public class TicketServiceImpl implements TicketService {
         User foundUser = checkUserExists(requesterId);
 
         return ticketMapper.entitiesToResponseDtos(ticketRepository.findAllByRequester(requesterId));
+    }
+
+    @Override
+    public List<TicketResponseDto> getTicketsAssignedToUser(UUID userId) {
+        User foundUser = checkUserExists(userId);
+
+        return ticketMapper.entitiesToResponseDtos(ticketRepository.findAllByAssignedToUser(userId));
     }
 
 //    @Override

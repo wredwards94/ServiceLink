@@ -10,4 +10,6 @@ public interface CommentService {
     CommentResponseDto addCommentToTicket(Long ticketId, UUID authorId, CommentRequestDto commentRequest);
 
     List<CommentResponseDto> getCommentsForTicket(Long ticketId);
+
+    void deleteComment(Long commentId);
 }

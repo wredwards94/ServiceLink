@@ -3,8 +3,6 @@ package com.wesleyedwards.ServiceLink.Controllers;
 import com.wesleyedwards.ServiceLink.Dtos.CredentialsRequestDto;
 import com.wesleyedwards.ServiceLink.Dtos.UserRequestDto;
 import com.wesleyedwards.ServiceLink.Dtos.UserResponseDto;
-import com.wesleyedwards.ServiceLink.Entities.Credentials;
-import com.wesleyedwards.ServiceLink.Entities.User;
 import com.wesleyedwards.ServiceLink.Service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;

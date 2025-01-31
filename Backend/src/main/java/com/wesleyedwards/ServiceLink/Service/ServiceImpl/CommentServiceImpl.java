@@ -11,6 +11,7 @@ import com.wesleyedwards.ServiceLink.Repositories.CommentRepository;
 import com.wesleyedwards.ServiceLink.Repositories.TicketRepository;
 import com.wesleyedwards.ServiceLink.Repositories.UserRepository;
 import com.wesleyedwards.ServiceLink.Service.CommentService;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -28,6 +29,7 @@ public class CommentServiceImpl implements CommentService {
 
 
     @Override
+    @Transactional
     public CommentResponseDto addCommentToTicket(Long ticketId, UUID authorId, CommentRequestDto commentRequest) {
         Ticket foundTicket = checkTicketExists(ticketId);
         User foundUser = checkUserExists(authorId);
@@ -51,10 +53,17 @@ public class CommentServiceImpl implements CommentService {
         return commentMapper.entitiesToResponseDtos(commentRepository.findAllByTicketId(ticketId));
     }
 
+    @Override
+    public void deleteComment(Long commentId) {
+        checkCommentExists(commentId);
+
+        commentRepository.deleteById(commentId);
+    }
+
     private Ticket checkTicketExists(Long id) {
         Optional<Ticket> optionalTicket = ticketRepository.findById(id);
 
-        if(optionalTicket.isEmpty()) throw new NotFoundException("Ticket " + id + " not found");
+        if(optionalTicket.isEmpty()) throw new NotFoundException("Ticket " + id + " not found.");
 
 //        System.out.println(optionalTicket.get().getAssignedTo().getUserId());
 
@@ -64,8 +73,16 @@ public class CommentServiceImpl implements CommentService {
     private User checkUserExists(UUID userId) {
         Optional<User> optionalUser = userRepository.findById(userId);
 
-        if(optionalUser.isEmpty()) throw new NotFoundException("User: " + userId + " does not exist");
+        if(optionalUser.isEmpty()) throw new NotFoundException("User: " + userId + " does not exist.");
 
         return optionalUser.get();
+    }
+
+    private Comment checkCommentExists(Long id) {
+        Optional<Comment> optionalComment = commentRepository.findById(id);
+
+        if(optionalComment.isEmpty()) throw new NotFoundException("This comment does not exists.");
+
+        return optionalComment.get();
     }
 }

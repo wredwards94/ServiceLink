@@ -1,4 +1,5 @@
 const API_ROOT = 'http://localhost:8080/'
+// const API_ROOT = 'http://192.168.1.213:8080/'
 
 export default async function fetchFromAPI(method: string, endpoint: string, body?: any) {
   let url = `${API_ROOT}${endpoint}`
@@ -13,7 +14,7 @@ export default async function fetchFromAPI(method: string, endpoint: string, bod
     const data = await response.json()
     if (response.ok) {
       return data
-    } else console.error('Error fetching data from API')
+    } else console.error('API Error:', data)
   } catch (error) {
     console.error(error)
     return error
