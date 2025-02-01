@@ -1,0 +1,41 @@
+<div class="card">
+  <p-table [tableStyle]="{ 'min-width': '50rem' }">
+    <ng-template pTemplate="header">
+<!--      <td *ngFor="let t of ticketData">{{ t.title }}</td>-->
+      <tr>
+        <th *ngFor="let t of ticket | keyvalue : returnZero">{{t.key}}</th>
+      </tr>
+      <tr *ngFor="let v of ticketData">
+        <td>{{v.id}}</td>
+        <td >{{v.title}}</td>
+<!--        <td>{{v.description}}</td>-->
+        <td>{{v.status}}</td>
+        <td>{{v.priority}}</td>
+        <td>{{v.category}}</td>
+        <td>{{v.assigned_to}}</td>
+        <td>{{v.requester}}</td>
+        <td>{{v.request_time}}</td>
+        <td>{{v.updatedAt}}</td>
+      </tr>
+    </ng-template>
+    <ng-template pTemplate="body" let-rowData let-columns="columns">
+      <tr>
+        <!--        <td *ngFor="let col of columns">-->
+        <!--          {{ rowData[col.field] }}-->
+        <!--        </td>-->
+      </tr>
+    </ng-template>
+  </p-table>
+</div>
+
+
+<!--// private String title;-->
+<!--// private String description;-->
+<!--// private String status; // Open, In Progress, Resolved-->
+<!--// private String priority; // Low, Medium, High-->
+<!--// private String category; // e.g., Technical, Billing-->
+<!--// private User assignedTo; // Agent assigned to the ticket-->
+<!--// private User requester;-->
+<!--// private Timestamp createdAt;-->
+<!--// private Timestamp updatedAt;-->
+<!--// private List<Comment> comments;-->
