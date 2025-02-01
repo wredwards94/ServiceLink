@@ -8,13 +8,17 @@ import { LoginComponent } from './components/login/login.component';
 import {FormsModule, ReactiveFormsModule} from "@angular/forms";
 import {Button, ButtonDirective} from "primeng/button";
 import {Ripple} from "primeng/ripple";
+import { TicketPageComponent } from './components/ticket-page/ticket-page.component';
 import {TableModule} from "primeng/table";
+import { TicketDetailsComponent } from './components/ticket-page/ticket-details/ticket-details.component';
 
 @NgModule({
   declarations: [
     AppComponent,
     WelcomeScreenComponent,
-    LoginComponent
+    LoginComponent,
+    TicketPageComponent,
+    TicketDetailsComponent
   ],
   imports: [
     BrowserModule,
