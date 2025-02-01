@@ -1,9 +1,9 @@
 package com.wesleyedwards.ServiceLink.Service.ServiceImpl;
 
 import com.wesleyedwards.ServiceLink.Dtos.CredentialsRequestDto;
+import com.wesleyedwards.ServiceLink.Dtos.UserIdResponseDto;
 import com.wesleyedwards.ServiceLink.Dtos.UserRequestDto;
 import com.wesleyedwards.ServiceLink.Dtos.UserResponseDto;
-import com.wesleyedwards.ServiceLink.Entities.Credentials;
 import com.wesleyedwards.ServiceLink.Entities.User;
 import com.wesleyedwards.ServiceLink.Exceptions.BadRequestException;
 import com.wesleyedwards.ServiceLink.Exceptions.NotFoundException;
@@ -35,14 +35,14 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public UserResponseDto login(CredentialsRequestDto credentials) {
+    public UserIdResponseDto login(CredentialsRequestDto credentials) {
         Optional<User> optionalUser =
                 userRepository.findByCredentialsUsername(credentials.username());
 
         if(optionalUser.isEmpty()) throw new NotFoundException("user: " + credentials.username() + " does not exist");
         if(!optionalUser.get().getCredentials().getPassword().equals(credentials.password())) throw new BadRequestException("Invalid password");
 
-        return userMapper.entityToResponseDto(optionalUser.get());
+        return userMapper.entityToIdResponseDto(optionalUser.get());
     }
 
     @Override

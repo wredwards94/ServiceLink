@@ -1,8 +1,9 @@
 import { Component } from '@angular/core';
-import {TicketNoComments} from "../../types/types";
+import {TicketNoComments, UserId} from "../../types/types";
 import {TicketService} from "../../services/ticket.service";
 import { KeyValuePipe } from '@angular/common';
 import {of} from "rxjs";
+import {ActivatedRoute} from "@angular/router";
 
 @Component({
   selector: 'app-ticket-page',
@@ -26,19 +27,25 @@ export class TicketPageComponent {
     'Updated At': '',
   }
 
-  constructor(private ticketsService: TicketService) { }
+  constructor(private ticketsService: TicketService, private route: ActivatedRoute) { }
 
   async ngOnInit() {
-    this.ticketsService.fetchTickets().then(r => {
-      this.ticketData = r as any;
-      // this.ticketData.push(r.ticket);
-      console.log(`ticket data ${this.ticketData}`);
-      for(const ticket of this.ticketData) {
-        console.log(ticket)
-      }
-    }).catch(error => {
-      console.log(error);
-    });
+    const id = this.route.snapshot.paramMap.get('userId'); // Retrieve the userId from route param
+    console.log(`Retrieved userId from route params: ${id}`);
+
+    if (id) {
+      await this.ticketsService.fetchUserTickets(id).then(r => {
+        this.ticketData = r as any;
+        console.log(`ticket data: ${JSON.stringify(this.ticketData)}`);
+        for (const ticket of this.ticketData) {
+          console.log(ticket);
+        }
+      }).catch(error => {
+        console.error('Error fetching tickets:', error);
+      });
+    } else {
+      console.error('UserId not found in route params');
+    }
   }
 
   returnZero() {

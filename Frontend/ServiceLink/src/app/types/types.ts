@@ -5,10 +5,14 @@ export type TicketNoComments = {
   status: string;
   priority: string;
   category: string;
-  assigned_to: string;
+  assignedTo: string;
   requester: string;
-  request_time: string;
+  createdAt: string;
   updatedAt: string;
+}
+
+export type UserId = {
+  id: string;
 }
 
 

@@ -1,6 +1,7 @@
 package com.wesleyedwards.ServiceLink.Controllers;
 
 import com.wesleyedwards.ServiceLink.Dtos.CredentialsRequestDto;
+import com.wesleyedwards.ServiceLink.Dtos.UserIdResponseDto;
 import com.wesleyedwards.ServiceLink.Dtos.UserRequestDto;
 import com.wesleyedwards.ServiceLink.Dtos.UserResponseDto;
 import com.wesleyedwards.ServiceLink.Service.UserService;
@@ -23,7 +24,7 @@ public class UserController {
     }
 
     @PostMapping("/auth/login")
-    public ResponseEntity<UserResponseDto> login(@RequestBody CredentialsRequestDto credentials) {
+    public ResponseEntity<UserIdResponseDto> login(@RequestBody CredentialsRequestDto credentials) {
         return ResponseEntity.ok(userService.login(credentials));
     }
 

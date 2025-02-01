@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.UUID;
 
-@CrossOrigin(origins="*")
+@CrossOrigin(origins = "*")
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/tickets")
@@ -94,9 +94,9 @@ public class TicketController {
 //        return ResponseEntity.ok(commentService.getCommentsForTicket(ticketId));
 //    }
 //
-//    @GetMapping("/assigned/{userId}")
-//    public ResponseEntity<List<TicketResponseDto>> getTicketsAssignedToUser(@PathVariable UUID userId) {
-//        return ResponseEntity.ok(ticketService.getTicketsAssignedToUser(userId));
-//    }
+    @GetMapping("/assigned/{userId}")
+    public ResponseEntity<List<TicketResponseDto>> getTicketsAssignedToUser(@PathVariable UUID userId) {
+        return ResponseEntity.ok(ticketService.getTicketsAssignedToUser(userId));
+    }
 
 }

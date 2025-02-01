@@ -3,6 +3,7 @@ import {RouterModule, Routes, withComponentInputBinding} from '@angular/router';
 import {LoginComponent} from "./components/login/login.component";
 import {TicketPageComponent} from "./components/ticket-page/ticket-page.component";
 import {WelcomeScreenComponent} from "./components/welcome-screen/welcome-screen.component";
+import {TicketDetailsComponent} from "./components/ticket-page/ticket-details/ticket-details.component";
 
 const routes: Routes = [
   {
@@ -12,10 +13,10 @@ const routes: Routes = [
     path: 'login', component: WelcomeScreenComponent
   },
   {
-    path: 'tickets', component: TicketPageComponent
+    path: `tickets/:userId`, component: TicketPageComponent
   },
   {
-    path: 'tickets/ticketId=', component: TicketPageComponent
+    path: 'tickets/ticketId=', component: TicketDetailsComponent
   },
   {
     path: '**', redirectTo:'login', pathMatch: 'full'

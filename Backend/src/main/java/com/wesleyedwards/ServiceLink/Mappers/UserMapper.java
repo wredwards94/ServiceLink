@@ -1,5 +1,6 @@
 package com.wesleyedwards.ServiceLink.Mappers;
 
+import com.wesleyedwards.ServiceLink.Dtos.UserIdResponseDto;
 import com.wesleyedwards.ServiceLink.Dtos.UserRequestDto;
 import com.wesleyedwards.ServiceLink.Dtos.UserResponseDto;
 import com.wesleyedwards.ServiceLink.Entities.Credentials;
@@ -14,5 +15,7 @@ public interface UserMapper {
 
     User requestDtoToEntity(UserRequestDto userRequestDto);
     UserResponseDto entityToResponseDto(User user);
+    UserIdResponseDto entityToIdResponseDto(User user);
+
     List<UserResponseDto> entitiesToResponseDtos(List<User> users);
 }
