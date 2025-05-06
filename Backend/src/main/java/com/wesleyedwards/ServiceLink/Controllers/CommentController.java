@@ -34,4 +34,36 @@ public class CommentController {
         commentService.deleteComment(commentId);
         return ResponseEntity.ok("Comment deleted successfully");
     }
+
+    @PutMapping("/{commentId}")
+    public ResponseEntity<CommentResponseDto> updateComment(@PathVariable Long commentId,
+                                                            @RequestBody CommentRequestDto updatedComment) {
+        return ResponseEntity.ok(commentService.updateComment(commentId, updatedComment));
+    }
+
+//    Add comment searching using filters and/or keywords
+    /*@GetMapping("/{ticketId}/search")
+    public ResponseEntity<List<CommentResponseDto>> searchComments(
+            @PathVariable Long ticketId,
+            @RequestParam String keyword) {
+        return ResponseEntity.ok(commentService.searchComments(ticketId, keyword));
+    }*/
+
+//    Add Pagination for future
+    /*@GetMapping("/{ticketId}")
+    public ResponseEntity<List<CommentResponseDto>> getCommentsForTicket(
+            @PathVariable Long ticketId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        return ResponseEntity.ok(commentService.getCommentsForTicket(ticketId, page, size));
+    }*/
+
+//    Add logging for production issues
+    /*private static final Logger logger = LoggerFactory.getLogger(CommentController.class);
+
+        @PostMapping("/{ticketId}")
+        public ResponseEntity<CommentResponseDto> addComment(...) {
+            logger.info("Adding comment to ticket {}", ticketId);
+        ...
+        }*/
 }

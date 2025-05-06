@@ -12,4 +12,6 @@ public interface CommentService {
     List<CommentResponseDto> getCommentsForTicket(Long ticketId);
 
     void deleteComment(Long commentId);
+
+    CommentResponseDto updateComment(Long commentId, CommentRequestDto updatedComment);
 }

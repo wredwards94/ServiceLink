@@ -60,6 +60,15 @@ public class CommentServiceImpl implements CommentService {
         commentRepository.deleteById(commentId);
     }
 
+    @Override
+    public CommentResponseDto updateComment(Long commentId, CommentRequestDto updatedComment) {
+        Comment foundComment = checkCommentExists(commentId);
+
+        foundComment.setContent(updatedComment.content());
+
+        return commentMapper.entityToResponseDto(commentRepository.saveAndFlush(foundComment));
+    }
+
     private Ticket checkTicketExists(Long id) {
         Optional<Ticket> optionalTicket = ticketRepository.findById(id);
 
