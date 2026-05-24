@@ -9,6 +9,7 @@ import com.wesleyedwards.ServiceLink.enums.TicketPriority;
 import com.wesleyedwards.ServiceLink.enums.TicketStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
 import java.util.*;
@@ -20,6 +21,7 @@ public class Seeder implements CommandLineRunner {
     private final UserRepository userRepository;
     private final TicketRepository ticketRepository;
     private final CommentRepository commentRepository;
+    private final PasswordEncoder passwordEncoder;
 
     private static final String[] FIRST_NAMES = {
             "John", "Jane", "Michael", "Emily", "Chris",
@@ -84,7 +86,7 @@ public class Seeder implements CommandLineRunner {
         for (int i = 0; i < 10; i++) {
             Credentials credentials = new Credentials(
                     "user" + (i + 1),
-                    "password" + (i + 1)
+                    passwordEncoder.encode("password" + (i + 1))
             );
             Profile profile = new Profile(
                     FIRST_NAMES[i],
