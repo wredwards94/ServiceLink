@@ -48,32 +48,24 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public UserResponseDto getUser(UUID userId) {
-        Optional<User> optionalUser = userRepository.findById(userId);
-
-        if(optionalUser.isEmpty()) throw new NotFoundException("User: " + userId + " does not exists");
-
-        return userMapper.entityToResponseDto(optionalUser.get());
+        return userMapper.entityToResponseDto(checkUserExists(userId));
     }
 
     @Override
     public UserResponseDto updateUser(UUID userId, ProfileRequestDto updateProf) {
-        Optional<User> optionalUser = userRepository.findById(userId);
+        User foundUser = checkUserExists(userId);
 
-        if(optionalUser.isEmpty()) throw new NotFoundException("User: " + userId + " does not exists");
+        profileMapper.updateProfileFromDto(updateProf, foundUser.getProfile());
 
-        profileMapper.updateProfileFromDto(updateProf, optionalUser.get().getProfile());
-
-        return userMapper.entityToResponseDto(userRepository.save(optionalUser.get()));
+        return userMapper.entityToResponseDto(userRepository.save(foundUser));
     }
 
     @Override
     public void deleteuser(UUID userId) {
-        Optional<User> optionalUser = userRepository.findById(userId);
+        User foundUser = checkUserExists(userId);
 
-        if(optionalUser.isEmpty()) throw new NotFoundException("User: " + userId + " does not exists");
-
-        optionalUser.get().setDisabled(true);
-        userRepository.saveAndFlush(optionalUser.get());
+        foundUser.setDisabled(true);
+        userRepository.saveAndFlush(foundUser);
     }
 
     private User checkUserExists(UUID userId) {
