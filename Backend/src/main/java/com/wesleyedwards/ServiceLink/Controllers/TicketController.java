@@ -10,6 +10,10 @@ import com.wesleyedwards.ServiceLink.Service.TicketService;
 import com.wesleyedwards.ServiceLink.enums.TicketPriority;
 import com.wesleyedwards.ServiceLink.enums.TicketStatus;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -23,7 +27,6 @@ import java.util.UUID;
 @RequestMapping("/api/tickets")
 public class TicketController {
     private final TicketService ticketService;
-    private final CommentService commentService;
 
     @GetMapping
     public ResponseEntity<List<TicketResponseDto>> getAllTickets() {
@@ -63,16 +66,25 @@ public class TicketController {
     }
 
     @GetMapping("/search")
-    public ResponseEntity<List<TicketResponseDto>> searchTickets(@RequestParam String keyword) {
-        return ResponseEntity.ok(ticketService.searchTickets(keyword));
+    public ResponseEntity<Page<TicketResponseDto>> searchTickets(
+            @RequestParam String keyword,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "createdAt") String sortBy) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by(sortBy).descending());
+        return ResponseEntity.ok(ticketService.searchTickets(keyword, pageable));
     }
 
     @GetMapping("/search/advanced")
-    public ResponseEntity<List<TicketResponseDto>> advancedSearch(
+    public ResponseEntity<Page<TicketResponseDto>> advancedSearch(
             @RequestParam String keyword,
             @RequestParam(required = false) TicketStatus status,
-            @RequestParam(required = false) TicketPriority priority) {
-        return ResponseEntity.ok(ticketService.advancedSearch(keyword, status, priority));
+            @RequestParam(required = false) TicketPriority priority,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "createdAt") String sortBy) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by(sortBy).descending());
+        return ResponseEntity.ok(ticketService.advancedSearch(keyword, status, priority, pageable));
     }
 
     @PutMapping("/{id}/assign/{userId}")
@@ -89,5 +101,4 @@ public class TicketController {
     public ResponseEntity<List<TicketResponseDto>> getTicketsAssignedToUser(@PathVariable UUID userId) {
         return ResponseEntity.ok(ticketService.getTicketsAssignedToUser(userId));
     }
-
 }

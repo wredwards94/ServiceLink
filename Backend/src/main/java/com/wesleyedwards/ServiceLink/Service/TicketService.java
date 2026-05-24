@@ -4,6 +4,8 @@ import com.wesleyedwards.ServiceLink.Dtos.TicketRequestDto;
 import com.wesleyedwards.ServiceLink.Dtos.TicketResponseDto;
 import com.wesleyedwards.ServiceLink.enums.TicketPriority;
 import com.wesleyedwards.ServiceLink.enums.TicketStatus;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import java.util.List;
 import java.util.UUID;
@@ -15,7 +17,7 @@ public interface TicketService {
 
     TicketResponseDto getTicketById(Long id);
 
-    TicketResponseDto deleteTicketById(Long id);
+    void deleteTicketById(Long id);
 
     TicketResponseDto updateTicket(Long id, TicketRequestDto updatedTicket);
 
@@ -23,9 +25,9 @@ public interface TicketService {
 
     List<TicketResponseDto> getAllTicketsByPriority(TicketPriority priority);
 
-    List<TicketResponseDto> searchTickets(String keyword);
+    Page<TicketResponseDto> searchTickets(String keyword, Pageable pageable);
 
-    List<TicketResponseDto> advancedSearch(String keyword, TicketStatus status, TicketPriority priority);
+    Page<TicketResponseDto> advancedSearch(String keyword, TicketStatus status, TicketPriority priority, Pageable pageable);
 
     TicketResponseDto assignTicketToUser(Long id, UUID userId);
 

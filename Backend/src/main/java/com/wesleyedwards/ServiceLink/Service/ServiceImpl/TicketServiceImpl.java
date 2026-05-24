@@ -14,6 +14,8 @@ import com.wesleyedwards.ServiceLink.enums.TicketPriority;
 import com.wesleyedwards.ServiceLink.enums.TicketStatus;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.sql.Timestamp;
@@ -50,11 +52,10 @@ public class TicketServiceImpl implements TicketService {
     }
 
     @Override
-    public TicketResponseDto deleteTicketById(Long id) {
+    public void deleteTicketById(Long id) {
         Ticket foundTicket = checkTicketExists(id);
 
         ticketRepository.deleteById(id);
-        return ticketMapper.entityToResponseDto(foundTicket);
     }
 
     @Override
@@ -76,14 +77,17 @@ public class TicketServiceImpl implements TicketService {
     }
 
     @Override
-    public List<TicketResponseDto> searchTickets(String keyword) {
-        return ticketMapper.entitiesToResponseDtos(ticketRepository.searchByKeyword(keyword));
+    public Page<TicketResponseDto> searchTickets(String keyword, Pageable pageable) {
+        return ticketRepository.searchByKeyword(keyword, pageable)
+                .map(ticketMapper::entityToResponseDto);
     }
 
     @Override
-    public List<TicketResponseDto> advancedSearch(String keyword, TicketStatus status, TicketPriority priority) {
-        return ticketMapper.entitiesToResponseDtos(ticketRepository.advancedSearch(keyword, status, priority));
+    public Page<TicketResponseDto> advancedSearch(String keyword, TicketStatus status, TicketPriority priority, Pageable pageable) {
+        return ticketRepository.advancedSearch(keyword, status, priority, pageable)
+                .map(ticketMapper::entityToResponseDto);
     }
+
 
     @Override
     public TicketResponseDto assignTicketToUser(Long id, UUID userId) {
@@ -97,6 +101,7 @@ public class TicketServiceImpl implements TicketService {
 
     @Override
     public List<TicketResponseDto> getTicketsByRequester(UUID requesterId) {
+        User foundUser = checkUserExists(requesterId);
         return ticketMapper.entitiesToResponseDtos(ticketRepository.findAllByRequester(requesterId));
     }
 
