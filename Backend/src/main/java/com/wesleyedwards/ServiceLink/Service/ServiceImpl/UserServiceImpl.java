@@ -34,13 +34,11 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public UserIdResponseDto login(CredentialsRequestDto credentials) {
-        Optional<User> optionalUser =
-                userRepository.findByCredentialsUsername(credentials.username());
+        User foundUser = checkUserExistsByUsername(credentials.username());
 
-        if(optionalUser.isEmpty()) throw new NotFoundException("user: " + credentials.username() + " does not exist");
-        if(!optionalUser.get().getCredentials().getPassword().equals(credentials.password())) throw new BadRequestException("Invalid password");
+        if(!foundUser.getCredentials().getPassword().equals(credentials.password())) throw new BadRequestException("Invalid password");
 
-        return userMapper.entityToIdResponseDto(optionalUser.get());
+        return userMapper.entityToIdResponseDto(foundUser);
     }
 
     @Override
@@ -58,7 +56,7 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public UserResponseDto UpdateUser(UUID userId, ProfileRequestDto updateProf) {
+    public UserResponseDto updateUser(UUID userId, ProfileRequestDto updateProf) {
         Optional<User> optionalUser = userRepository.findById(userId);
 
         if(optionalUser.isEmpty()) throw new NotFoundException("User: " + userId + " does not exists");
@@ -82,6 +80,14 @@ public class UserServiceImpl implements UserService {
         Optional<User> optionalUser = userRepository.findById(userId);
 
         if(optionalUser.isEmpty()) throw new NotFoundException("User: " + userId + " does not exist");
+
+        return optionalUser.get();
+    }
+
+    private User checkUserExistsByUsername(String username) {
+        Optional<User> optionalUser = userRepository.findByCredentialsUsername(username);
+
+        if(optionalUser.isEmpty()) throw new NotFoundException("User: " + username + " does not exist");
 
         return optionalUser.get();
     }

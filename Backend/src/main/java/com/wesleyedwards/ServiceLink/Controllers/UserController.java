@@ -39,7 +39,7 @@ public class UserController {
 
     @PatchMapping("/profile/{userId}")
     public ResponseEntity<UserResponseDto> updateUser(@PathVariable UUID userId, @RequestBody ProfileRequestDto updateProf) {
-        return ResponseEntity.ok(userService.UpdateUser(userId, updateProf));
+        return ResponseEntity.ok(userService.updateUser(userId, updateProf));
     }
 
     @DeleteMapping("/{userId}")

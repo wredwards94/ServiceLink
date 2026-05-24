@@ -16,7 +16,7 @@ public interface UserService {
 
     UserResponseDto getUser(UUID userId);
 
-    UserResponseDto UpdateUser(UUID userId, ProfileRequestDto updateProf);
+    UserResponseDto updateUser(UUID userId, ProfileRequestDto updateProf);
 
     void deleteuser(UUID userId);
 }
