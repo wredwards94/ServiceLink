@@ -42,7 +42,7 @@ public class Ticket {
     @UpdateTimestamp
     private Timestamp updatedAt;
 
-    @OneToMany(mappedBy = "ticket")
+    @OneToMany(mappedBy = "ticket", cascade = CascadeType.REMOVE)
     @JsonManagedReference
     private List<Comment> comments;
 }

@@ -8,6 +8,7 @@ import com.wesleyedwards.ServiceLink.Entities.Ticket;
 import com.wesleyedwards.ServiceLink.Service.CommentService;
 import com.wesleyedwards.ServiceLink.Service.TicketService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -30,7 +31,7 @@ public class TicketController {
     @PostMapping("/newticket/requester")
     public ResponseEntity<TicketResponseDto> createTicket(@RequestBody TicketRequestDto createdTicket,
                                                           @RequestParam UUID requesterId) {
-        return ResponseEntity.ok(ticketService.createTicket(createdTicket, requesterId));
+        return ResponseEntity.status(HttpStatus.CREATED).body(ticketService.createTicket(createdTicket, requesterId));
     }
 
     @GetMapping("/{id}")
@@ -39,7 +40,7 @@ public class TicketController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<TicketResponseDto> DeleteTicket(@PathVariable Long id) {
+    public ResponseEntity<TicketResponseDto> deleteTicket(@PathVariable Long id) {
         return ResponseEntity.ok(ticketService.deleteTicketById(id));
     }
 

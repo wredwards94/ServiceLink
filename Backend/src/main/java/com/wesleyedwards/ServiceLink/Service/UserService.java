@@ -1,13 +1,11 @@
 package com.wesleyedwards.ServiceLink.Service;
 
-import com.wesleyedwards.ServiceLink.Dtos.CredentialsRequestDto;
-import com.wesleyedwards.ServiceLink.Dtos.UserIdResponseDto;
-import com.wesleyedwards.ServiceLink.Dtos.UserRequestDto;
-import com.wesleyedwards.ServiceLink.Dtos.UserResponseDto;
+import com.wesleyedwards.ServiceLink.Dtos.*;
 import com.wesleyedwards.ServiceLink.Entities.Credentials;
 import com.wesleyedwards.ServiceLink.Entities.User;
 
 import java.util.List;
+import java.util.UUID;
 
 public interface UserService {
     UserResponseDto createUser(UserRequestDto newUser);
@@ -15,4 +13,10 @@ public interface UserService {
     UserIdResponseDto login(CredentialsRequestDto credentials);
 
     List<UserResponseDto> getAllUsers();
+
+    UserResponseDto getUser(UUID userId);
+
+    UserResponseDto UpdateUser(UUID userId, ProfileRequestDto updateProf);
+
+    void deleteuser(UUID userId);
 }
