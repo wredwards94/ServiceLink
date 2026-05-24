@@ -6,8 +6,10 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
 
 import java.sql.Timestamp;
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
@@ -25,15 +27,18 @@ public class Comment {
     @JsonBackReference(value = "comments")
     private Ticket ticket;
 
-    @Column(nullable = false)
-    private UUID authorId; // Reference to the User who made the comment
+    @ManyToOne
+    @JsonBackReference(value = "commentAuthor")
+    private User author; // Reference to the User who made the comment
 
     @Column(nullable = false)
     private String content;
 
     @Column(nullable = false)
     @CreationTimestamp
-    private Timestamp createdAt;
+    private LocalDateTime createdAt;
 
-//    private LocalDateTime updatedAt;
+    @Column(nullable = false)
+    @UpdateTimestamp
+    private LocalDateTime updatedAt;
 }

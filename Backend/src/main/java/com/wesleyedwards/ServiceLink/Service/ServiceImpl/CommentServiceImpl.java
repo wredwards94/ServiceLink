@@ -36,11 +36,10 @@ public class CommentServiceImpl implements CommentService {
         Comment newComment = commentMapper.requestDtoToEntity(commentRequest);
 
         newComment.setTicket(foundTicket);
-        newComment.setAuthorId(foundUser.getUserId());
+        newComment.setAuthor(foundUser);
 
-        foundTicket.getComments().add(newComment);
         commentRepository.saveAndFlush(newComment);
-        foundTicket.setUpdatedAt(newComment.getCreatedAt());
+
         ticketRepository.saveAndFlush(foundTicket);
 
         return commentMapper.entityToResponseDto(newComment);
@@ -64,7 +63,7 @@ public class CommentServiceImpl implements CommentService {
     public CommentResponseDto updateComment(Long commentId, CommentRequestDto updatedComment) {
         Comment foundComment = checkCommentExists(commentId);
 
-        foundComment.setContent(updatedComment.content());
+        commentMapper.updateCommentFromDto(updatedComment, foundComment);
 
         return commentMapper.entityToResponseDto(commentRepository.saveAndFlush(foundComment));
     }

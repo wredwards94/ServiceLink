@@ -2,6 +2,8 @@ package com.wesleyedwards.ServiceLink.Entities;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
+import com.wesleyedwards.ServiceLink.enums.TicketPriority;
+import com.wesleyedwards.ServiceLink.enums.TicketStatus;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -10,6 +12,7 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.sql.Timestamp;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Entity
@@ -24,8 +27,13 @@ public class Ticket {
 
     private String title;
     private String description;
-    private String status; // Open, In Progress, Resolved
-    private String priority; // Low, Medium, High
+
+    @Enumerated(EnumType.STRING)
+    private TicketStatus status;// Open, In Progress, Resolved
+
+    @Enumerated(EnumType.STRING)
+    private TicketPriority priority; // Low, Medium, High
+
     private String category; // e.g., Technical, Billing
 
     @ManyToOne
@@ -37,12 +45,12 @@ public class Ticket {
     private User requester;
 
     @CreationTimestamp
-    private Timestamp createdAt;
+    private LocalDateTime createdAt;
 
     @UpdateTimestamp
-    private Timestamp updatedAt;
+    private LocalDateTime updatedAt;
 
     @OneToMany(mappedBy = "ticket", cascade = CascadeType.REMOVE)
-    @JsonManagedReference
+    @JsonManagedReference(value = "commentAuthor")
     private List<Comment> comments;
 }
