@@ -5,10 +5,13 @@ import com.wesleyedwards.ServiceLink.Exceptions.BadRequestException;
 import com.wesleyedwards.ServiceLink.Exceptions.NotAuthorizedException;
 import com.wesleyedwards.ServiceLink.Exceptions.NotFoundException;
 import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.ResponseStatus;
+
+import java.util.stream.Collectors;
 
 @ResponseBody
 @ControllerAdvice(basePackages = {"com.wesleyedwards.ServiceLink.Controllers"})
@@ -30,5 +33,16 @@ public class ServiceLinkControllerAdvice {
     @ExceptionHandler(NotFoundException.class)
     public ErrorDto handleNotFoundException(NotFoundException notFound) {
         return new ErrorDto(notFound.getMessage());
+    }
+
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ErrorDto handleValidationException(MethodArgumentNotValidException ex) {
+        String message = ex.getBindingResult()
+                .getFieldErrors()
+                .stream()
+                .map(error -> error.getField() + ": " + error.getDefaultMessage())
+                .collect(Collectors.joining(", "));
+        return new ErrorDto(message);
     }
 }

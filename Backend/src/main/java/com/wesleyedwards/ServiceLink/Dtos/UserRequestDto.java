@@ -1,4 +1,11 @@
 package com.wesleyedwards.ServiceLink.Dtos;
 
-public record UserRequestDto(CredentialsRequestDto credentials, ProfileRequestDto profile) {
-}
+import jakarta.validation.constraints.NotNull;
+
+public record UserRequestDto(
+        @NotNull(message = "Credentials are required")
+        CredentialsRequestDto credentials,
+
+        @NotNull(message = "Profile is required")
+        ProfileRequestDto profile
+) {}
