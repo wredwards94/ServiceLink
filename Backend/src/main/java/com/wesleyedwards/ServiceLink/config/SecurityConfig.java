@@ -3,6 +3,7 @@ package com.wesleyedwards.ServiceLink.config;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
@@ -26,13 +27,30 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        System.out.println("SecurityConfig loaded");
         http
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
+                        // Public endpoints
                         .requestMatchers("/api/users/auth/**").permitAll()
+
+                        // Admin only
+                        .requestMatchers(HttpMethod.GET, "/api/users").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/api/users/**").hasRole("ADMIN")
+
+                        // Admin and Agent
+                        .requestMatchers("/api/tickets/**").hasAnyRole("ADMIN", "AGENT")
+                        .requestMatchers("/api/comments/**").hasAnyRole("ADMIN", "AGENT")
+
+                        // Admin, Agent and User
+                        .requestMatchers(HttpMethod.GET, "/api/tickets/**").hasAnyRole("ADMIN", "AGENT", "USER")
+                        .requestMatchers(HttpMethod.POST, "/api/tickets/**").hasAnyRole("ADMIN", "AGENT", "USER")
+                        .requestMatchers(HttpMethod.POST, "/api/comments/**").hasAnyRole("ADMIN", "AGENT", "USER")
+
+                        // Any authenticated user
+                        .requestMatchers("/api/users/**").authenticated()
+
                         .anyRequest().authenticated()
                 )
                 .authenticationProvider(authenticationProvider())
