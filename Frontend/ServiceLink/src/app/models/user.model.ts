@@ -16,7 +16,7 @@ export interface UserIdResponse {
 }
 
 export enum Role {
-  ADMIN = 'ADMIN',
-  AGENT = 'AGENT',
-  USER = 'USER',
+  ADMIN = 'Admin',
+  AGENT = 'Agent',
+  USER = 'User',
 }

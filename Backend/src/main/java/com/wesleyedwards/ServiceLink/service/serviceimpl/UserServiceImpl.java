@@ -40,6 +40,7 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public UserIdResponseDto login(CredentialsRequestDto credentials) {
+        System.out.println(credentials);
         User foundUser = checkUserExistsByUsername(credentials.username());
         if(!passwordEncoder.matches(credentials.password(), foundUser.getCredentials().getPassword()))
             throw new BadRequestException("Invalid password");
