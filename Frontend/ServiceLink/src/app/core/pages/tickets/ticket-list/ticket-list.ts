@@ -4,10 +4,11 @@ import { FormsModule } from '@angular/forms';
 import { TicketService } from '../../../services/ticket.service';
 import { Router } from '@angular/router';
 import { Priority, Status, TicketResponse } from '../../../../models/ticket.model';
+import { TicketForm } from '../../../../shared/components/ticket-form/ticket-form';
 
 @Component({
   selector: 'app-ticket-list',
-  imports: [NgClass, FormsModule],
+  imports: [NgClass, FormsModule, TicketForm],
   templateUrl: './ticket-list.html',
   styleUrl: './ticket-list.css',
 })
@@ -23,6 +24,7 @@ export class TicketList implements OnInit {
   keyword: string = '';
   selectedStatus: string = '';
   selectedPriority: string = '';
+  showTicketForm: boolean = false;
 
   statuses = Object.values(Status);
   priorities = Object.values(Priority);
@@ -106,5 +108,9 @@ export class TicketList implements OnInit {
 
   toggleDropdown(ticketId: number): void {
     this.activeDropdown = this.activeDropdown === ticketId ? null : ticketId;
+  }
+
+  onTicketCreated(): void {
+    this.loadTickets();
   }
 }
