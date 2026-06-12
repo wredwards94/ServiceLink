@@ -15,6 +15,8 @@ export interface UserIdResponse {
   role: Role;
 }
 
+export interface UserResponse {}
+
 export enum Role {
   ADMIN = 'Admin',
   AGENT = 'Agent',
