@@ -5,10 +5,14 @@ import { UserService } from '../../../services/user.service';
 import { TicketResponse } from '../../../../models/ticket.model';
 import { Profile, UserResponse } from '../../../../models/user.model';
 import { NgClass } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { CommentService } from '../../../services/comment.service';
+import { AuthService } from '../../../services/auth.service';
+import { CommentRequest } from '../../../../models/comment.model';
 
 @Component({
   selector: 'app-ticket-detail',
-  imports: [NgClass],
+  imports: [NgClass, FormsModule],
   templateUrl: './ticket-detail.html',
   styleUrl: './ticket-detail.css',
 })
@@ -17,6 +21,8 @@ export class TicketDetail implements OnInit {
     private route: ActivatedRoute,
     private router: Router,
     private ticketService: TicketService,
+    private commentService: CommentService,
+    private authService: AuthService,
     private userService: UserService,
     private cdr: ChangeDetectorRef,
   ) {}
@@ -27,6 +33,8 @@ export class TicketDetail implements OnInit {
   assignedTo: UserResponse | null = null;
   requesterProfile: Profile | null = null;
   assignedToProfile: Profile | null = null;
+  newComment: string = '';
+  isSubmitting: boolean = false;
 
   ngOnInit(): void {
     const id = this.route.snapshot.paramMap.get('id');
@@ -71,6 +79,30 @@ export class TicketDetail implements OnInit {
         this.isLoading = false;
         this.cdr.detectChanges();
       },
+    });
+  }
+
+  addComment(): void {
+    if (!this.newComment.trim() || !this.ticket) return;
+
+    const authorId = this.authService.getUserId();
+    if (!authorId) return;
+
+    const comment: CommentRequest = { content: this.newComment };
+    this.isSubmitting = true;
+
+    this.commentService.addComment(this.ticket.id, authorId, comment).subscribe({
+      next: (comment) => {
+        this.ticket!.comments.push(comment);
+        this.newComment = '';
+        this.isSubmitting = false;
+        this.cdr.detectChanges();
+      },
+      error: (error) => {
+        console.error('Failed to add comment', error);
+        this.isSubmitting = false;
+        this.cdr.detectChanges();
+      }
     });
   }
 
