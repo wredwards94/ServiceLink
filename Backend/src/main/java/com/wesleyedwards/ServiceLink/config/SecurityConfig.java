@@ -39,14 +39,17 @@ public class SecurityConfig {
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/users/auth/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/users").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.DELETE, "/api/users/**").hasRole("ADMIN")
-                        .requestMatchers("/api/tickets/**").hasAnyRole("ADMIN", "AGENT")
-                        .requestMatchers("/api/comments/**").hasAnyRole("ADMIN", "AGENT")
-                        .requestMatchers(HttpMethod.GET, "/api/tickets").hasAnyRole("ADMIN", "AGENT", "USER")
+                        // tickets — specific method rules first, broad (PUT/PATCH/DELETE) last
                         .requestMatchers(HttpMethod.GET, "/api/tickets/**").hasAnyRole("ADMIN", "AGENT", "USER")
                         .requestMatchers(HttpMethod.POST, "/api/tickets/**").hasAnyRole("ADMIN", "AGENT", "USER")
+                        .requestMatchers("/api/tickets/**").hasAnyRole("ADMIN", "AGENT")
+                        // comments — specific method rules first, broad last
+                        .requestMatchers(HttpMethod.GET, "/api/comments/**").hasAnyRole("ADMIN", "AGENT", "USER")
                         .requestMatchers(HttpMethod.POST, "/api/comments/**").hasAnyRole("ADMIN", "AGENT", "USER")
+                        .requestMatchers("/api/comments/**").hasAnyRole("ADMIN", "AGENT")
+                        // users
+                        .requestMatchers(HttpMethod.GET, "/api/users").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/api/users/**").hasRole("ADMIN")
                         .requestMatchers("/api/users/**").authenticated()
                         .anyRequest().authenticated()
                 )

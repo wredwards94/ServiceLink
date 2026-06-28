@@ -1,5 +1,6 @@
 package com.wesleyedwards.ServiceLink.service.serviceimpl;
 
+import com.wesleyedwards.ServiceLink.config.UserPrincipal;
 import com.wesleyedwards.ServiceLink.entities.User;
 import com.wesleyedwards.ServiceLink.repositories.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -19,10 +20,6 @@ public class UserDetailsServiceImpl implements UserDetailsService {
         User user = userRepository.findByCredentialsUsername(username)
                 .orElseThrow(() -> new UsernameNotFoundException("User: " + username + " not found"));
 
-        return org.springframework.security.core.userdetails.User
-                .withUsername(username)
-                .password(user.getCredentials().getPassword())
-                .roles(user.getRole().name())
-                .build();
+        return new UserPrincipal(user);
     }
 }

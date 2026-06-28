@@ -1,6 +1,7 @@
 package com.wesleyedwards.ServiceLink.service.serviceimpl;
 
 import com.wesleyedwards.ServiceLink.config.JwtUtil;
+import com.wesleyedwards.ServiceLink.config.UserPrincipal;
 import com.wesleyedwards.ServiceLink.dtos.*;
 import com.wesleyedwards.ServiceLink.entities.User;
 import com.wesleyedwards.ServiceLink.exceptions.BadRequestException;
@@ -12,6 +13,9 @@ import com.wesleyedwards.ServiceLink.repositories.TicketRepository;
 import com.wesleyedwards.ServiceLink.repositories.UserRepository;
 import com.wesleyedwards.ServiceLink.service.UserService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -26,6 +30,7 @@ public class UserServiceImpl implements UserService {
     private final UserMapper userMapper;
     private final ProfileMapper profileMapper;
     private final PasswordEncoder passwordEncoder;
+    private final AuthenticationManager authenticationManager;
     private final JwtUtil jwtUtil;
 
     @Override
@@ -40,18 +45,28 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public UserIdResponseDto login(CredentialsRequestDto credentials) {
-        System.out.println(credentials);
-        User foundUser = checkUserExistsByUsername(credentials.username());
-        if(!passwordEncoder.matches(credentials.password(), foundUser.getCredentials().getPassword()))
-            throw new BadRequestException("Invalid password");
+        Authentication auth = authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(
+                        credentials.username(), credentials.password()));
 
-        String token = jwtUtil.generateToken(
-                foundUser.getCredentials().getUsername(),
-                foundUser.getRole()
-        );
+        UserPrincipal principal = (UserPrincipal) auth.getPrincipal();
 
-        return new UserIdResponseDto(foundUser.getUserId(), token, foundUser.getRole());
+        String token = jwtUtil.generateToken(principal.getUsername(), principal.getRole());
+        return new UserIdResponseDto(principal.getUserId(), token, principal.getRole());
     }
+//    public UserIdResponseDto login(CredentialsRequestDto credentials) {
+//        System.out.println(credentials);
+//        User foundUser = checkUserExistsByUsername(credentials.username());
+//        if(!passwordEncoder.matches(credentials.password(), foundUser.getCredentials().getPassword()))
+//            throw new BadRequestException("Invalid password");
+//
+//        String token = jwtUtil.generateToken(
+//                foundUser.getCredentials().getUsername(),
+//                foundUser.getRole()
+//        );
+//
+//        return new UserIdResponseDto(foundUser.getUserId(), token, foundUser.getRole());
+//    }
 
     @Override
     public List<UserResponseDto> getAllUsers() {
