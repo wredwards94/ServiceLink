@@ -2,6 +2,7 @@ package com.wesleyedwards.ServiceLink.service.serviceimpl;
 
 import com.wesleyedwards.ServiceLink.dtos.TicketRequestDto;
 import com.wesleyedwards.ServiceLink.dtos.TicketResponseDto;
+import com.wesleyedwards.ServiceLink.dtos.TicketUpdateDto;
 import com.wesleyedwards.ServiceLink.entities.Ticket;
 import com.wesleyedwards.ServiceLink.entities.User;
 import com.wesleyedwards.ServiceLink.enums.TicketPriority;
@@ -149,7 +150,7 @@ class TicketServiceImplTest {
     @Test
     @DisplayName("updateTicket applies the changes and saves")
     void updateTicket_updates() {
-        TicketRequestDto update = new TicketRequestDto("New title", "new desc",
+        TicketUpdateDto update = new TicketUpdateDto("New title", "new desc",
                 TicketStatus.IN_PROGRESS, TicketPriority.LOW, "Billing");
         when(ticketRepository.findById(ticketId)).thenReturn(Optional.of(ticket));
         when(ticketRepository.saveAndFlush(ticket)).thenReturn(ticket);

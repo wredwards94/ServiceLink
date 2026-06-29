@@ -16,8 +16,8 @@ These close gaps that affect data integrity and trust. They are relatively small
 **Fix `SecurityConfig` rule ordering.** ✅ *Done.*
 Rules are evaluated top-to-bottom (first match wins), and the broad `/api/tickets/**` and `/api/comments/**` rules (matching all HTTP methods, ADMIN/AGENT only) sat *before* the method-specific rules that included USER — so the USER-inclusive POST/GET rules were dead code and a USER got 403 creating a ticket. Reordered so the method-specific GET/POST rules (allowing USER) come first and the broad rule (PUT/PATCH/DELETE → ADMIN/AGENT) comes last.
 
-**Role management endpoint.**
-New users always default to `Role.USER` (`User` entity) and there is no API to promote anyone to `AGENT` or `ADMIN`. Add an admin-only endpoint to view and change roles.
+**Role management endpoint.** ✅ *Done.*
+New users default to `Role.USER` and there was no way to change that. Added an admin-only `PATCH /api/users/{userId}/role` (with a `RoleRequestDto`) backed by `updateUserRole` in the service. Secured via a `requestMatchers(PATCH, "/api/users/*/role").hasRole("ADMIN")` rule placed before the catch-all so it can't be shadowed.
 
 **Request validation.**
 `spring-boot-starter-validation` is already a dependency but unused. Add `@Valid` on controller bodies and constraints (`@NotBlank`, `@Email`, `@Size`) on the request DTOs.
@@ -50,7 +50,12 @@ File and screenshot uploads on tickets and comments — close to essential for I
 Add a visibility flag so agents can leave notes the requester cannot see. (The `Comment` entity is the natural home.)
 
 **Ownership-based authorization.**
-Security is role-based only; any `AGENT` can edit or delete any ticket. Layer in ownership checks so requesters see their own tickets and agents act on assigned ones. Depends on Phase 1 (identity from JWT).
+Security is role-based only. Layer in ownership checks for resources where "who owns it" matters — this needs method-level logic (a service/controller check or `@PreAuthorize`), not just `requestMatchers` rules:
+- *Tickets:* any `AGENT` can currently edit or delete any ticket; requesters should see their own and agents act on assigned ones.
+- *User profiles:* `GET`/`PATCH /api/users/{userId}` fall to the generic `authenticated()` rule, so any logged-in user can view or edit anyone's profile by ID. A user should only edit their own profile; ADMIN can edit anyone.
+- *Comments:* a USER can't currently edit/delete their own comment (ADMIN/AGENT only) — revisit if authors should manage their own.
+
+Depends on Phase 1 (identity from JWT), which is now in place.
 
 **Self-assignment & bulk actions.**
 Assign-to-me, unassign, and bulk status/assignment changes to speed up queue management.

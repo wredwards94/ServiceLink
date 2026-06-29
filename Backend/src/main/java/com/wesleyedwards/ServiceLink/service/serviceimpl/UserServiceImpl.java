@@ -4,6 +4,7 @@ import com.wesleyedwards.ServiceLink.config.JwtUtil;
 import com.wesleyedwards.ServiceLink.config.UserPrincipal;
 import com.wesleyedwards.ServiceLink.dtos.*;
 import com.wesleyedwards.ServiceLink.entities.User;
+import com.wesleyedwards.ServiceLink.enums.Role;
 import com.wesleyedwards.ServiceLink.exceptions.BadRequestException;
 import com.wesleyedwards.ServiceLink.exceptions.NotFoundException;
 import com.wesleyedwards.ServiceLink.mappers.CredentialsMapper;
@@ -79,10 +80,19 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public UserResponseDto updateUser(UUID userId, ProfileRequestDto updateProf) {
+    public UserResponseDto updateUser(UUID userId, ProfileUpdateDto updateProf) {
         User foundUser = checkUserExists(userId);
 
         profileMapper.updateProfileFromDto(updateProf, foundUser.getProfile());
+
+        return userMapper.entityToResponseDto(userRepository.save(foundUser));
+    }
+
+    @Override
+    public UserResponseDto updateUserRole(UUID userId, Role role) {
+        User foundUser = checkUserExists(userId);
+
+        foundUser.setRole(role);
 
         return userMapper.entityToResponseDto(userRepository.save(foundUser));
     }
@@ -103,11 +113,11 @@ public class UserServiceImpl implements UserService {
         return optionalUser.get();
     }
 
-    private User checkUserExistsByUsername(String username) {
-        Optional<User> optionalUser = userRepository.findByCredentialsUsername(username);
-
-        if(optionalUser.isEmpty()) throw new NotFoundException("User: " + username + " does not exist");
-
-        return optionalUser.get();
-    }
+//    private User checkUserExistsByUsername(String username) {
+//        Optional<User> optionalUser = userRepository.findByCredentialsUsername(username);
+//
+//        if(optionalUser.isEmpty()) throw new NotFoundException("User: " + username + " does not exist");
+//
+//        return optionalUser.get();
+//    }
 }

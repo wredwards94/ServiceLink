@@ -2,6 +2,7 @@ package com.wesleyedwards.ServiceLink.controllers;
 
 import com.wesleyedwards.ServiceLink.dtos.*;
 import com.wesleyedwards.ServiceLink.service.UserService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -18,12 +19,12 @@ public class UserController {
     private final UserService userService;
 
     @PostMapping("/auth/register")
-    public ResponseEntity<UserResponseDto> createUser(@RequestBody UserRequestDto newUser) {
+    public ResponseEntity<UserResponseDto> createUser(@Valid @RequestBody UserRequestDto newUser) {
         return ResponseEntity.status(HttpStatus.CREATED).body(userService.createUser(newUser));
     }
 
     @PostMapping("/auth/login")
-    public ResponseEntity<UserIdResponseDto> login(@RequestBody CredentialsRequestDto credentials) {
+    public ResponseEntity<UserIdResponseDto> login(@Valid @RequestBody CredentialsRequestDto credentials) {
         return ResponseEntity.ok(userService.login(credentials));
     }
 
@@ -38,7 +39,7 @@ public class UserController {
     }
 
     @PatchMapping("/profile/{userId}")
-    public ResponseEntity<UserResponseDto> updateUser(@PathVariable UUID userId, @RequestBody ProfileRequestDto updateProf) {
+    public ResponseEntity<UserResponseDto> updateUser(@PathVariable UUID userId, @Valid @RequestBody ProfileUpdateDto updateProf) {
         return ResponseEntity.ok(userService.updateUser(userId, updateProf));
     }
 
@@ -46,5 +47,10 @@ public class UserController {
     public ResponseEntity<UserResponseDto> deleteUser(@PathVariable UUID userId) {
         userService.deleteuser(userId);
         return ResponseEntity.noContent().build();
+    }
+
+    @PatchMapping("/{userId}/role")
+    public ResponseEntity<UserResponseDto> updateRole(@PathVariable UUID userId, @Valid @RequestBody RoleRequestDto request) {
+        return ResponseEntity.ok(userService.updateUserRole(userId, request.role()));
     }
 }

@@ -4,6 +4,7 @@ import com.wesleyedwards.ServiceLink.config.JwtUtil;
 import com.wesleyedwards.ServiceLink.config.UserPrincipal;
 import com.wesleyedwards.ServiceLink.dtos.CredentialsRequestDto;
 import com.wesleyedwards.ServiceLink.dtos.ProfileRequestDto;
+import com.wesleyedwards.ServiceLink.dtos.ProfileUpdateDto;
 import com.wesleyedwards.ServiceLink.dtos.UserIdResponseDto;
 import com.wesleyedwards.ServiceLink.dtos.UserRequestDto;
 import com.wesleyedwards.ServiceLink.dtos.UserResponseDto;
@@ -167,7 +168,7 @@ class UserServiceImplTest {
     @Test
     @DisplayName("updateUser applies the profile changes and saves")
     void updateUser_updatesProfile() {
-        ProfileRequestDto update = new ProfileRequestDto("Jane", "Doe", "jane.doe@example.com");
+        ProfileUpdateDto update = new ProfileUpdateDto("Jane", "Doe", "jane.doe@example.com");
         UserResponseDto expected = new UserResponseDto(userId, null, List.of(), List.of());
 
         when(userRepository.findById(userId)).thenReturn(Optional.of(user));

@@ -3,7 +3,7 @@ package com.wesleyedwards.ServiceLink.controllers;
 import com.wesleyedwards.ServiceLink.config.JwtAuthFilter;
 import com.wesleyedwards.ServiceLink.config.SecurityConfig;
 import com.wesleyedwards.ServiceLink.dtos.CredentialsRequestDto;
-import com.wesleyedwards.ServiceLink.dtos.ProfileRequestDto;
+import com.wesleyedwards.ServiceLink.dtos.ProfileUpdateDto;
 import com.wesleyedwards.ServiceLink.dtos.UserIdResponseDto;
 import com.wesleyedwards.ServiceLink.dtos.UserRequestDto;
 import com.wesleyedwards.ServiceLink.dtos.UserResponseDto;
@@ -162,7 +162,7 @@ class UserControllerTest {
     @DisplayName("PATCH /api/users/profile/{id} returns 200 and forwards the profile changes")
     void updateUser_returns200() throws Exception {
         UUID id = UUID.randomUUID();
-        when(userService.updateUser(eq(id), any(ProfileRequestDto.class))).thenReturn(sampleUser(id));
+        when(userService.updateUser(eq(id), any(ProfileUpdateDto.class))).thenReturn(sampleUser(id));
 
         String body = "{\"firstName\": \"Jane\", \"lastName\": \"Doe\", \"email\": \"jane.doe@example.com\"}";
 
@@ -171,7 +171,7 @@ class UserControllerTest {
                         .content(body))
                 .andExpect(status().isOk());
 
-        verify(userService).updateUser(eq(id), any(ProfileRequestDto.class));
+        verify(userService).updateUser(eq(id), any(ProfileUpdateDto.class));
     }
 
     @Test

@@ -2,6 +2,7 @@ package com.wesleyedwards.ServiceLink.service.serviceimpl;
 
 import com.wesleyedwards.ServiceLink.dtos.TicketRequestDto;
 import com.wesleyedwards.ServiceLink.dtos.TicketResponseDto;
+import com.wesleyedwards.ServiceLink.dtos.TicketUpdateDto;
 import com.wesleyedwards.ServiceLink.entities.Ticket;
 import com.wesleyedwards.ServiceLink.entities.User;
 import com.wesleyedwards.ServiceLink.exceptions.NotFoundException;
@@ -57,7 +58,7 @@ public class TicketServiceImpl implements TicketService {
 
     @Override
     @Transactional
-    public TicketResponseDto updateTicket(Long id, TicketRequestDto updatedTicket) {
+    public TicketResponseDto updateTicket(Long id, TicketUpdateDto updatedTicket) {
         Ticket ticket = checkTicketExists(id);
         ticketMapper.updateTicketFromDto(updatedTicket, ticket);
         return ticketMapper.entityToResponseDto(ticketRepository.saveAndFlush(ticket));

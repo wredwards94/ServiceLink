@@ -5,6 +5,7 @@ import com.wesleyedwards.ServiceLink.config.SecurityConfig;
 import com.wesleyedwards.ServiceLink.config.UserPrincipal;
 import com.wesleyedwards.ServiceLink.dtos.TicketRequestDto;
 import com.wesleyedwards.ServiceLink.dtos.TicketResponseDto;
+import com.wesleyedwards.ServiceLink.dtos.TicketUpdateDto;
 import com.wesleyedwards.ServiceLink.entities.User;
 import com.wesleyedwards.ServiceLink.enums.TicketPriority;
 import com.wesleyedwards.ServiceLink.enums.TicketStatus;
@@ -141,7 +142,7 @@ class TicketControllerTest {
     @Test
     @DisplayName("PATCH /api/tickets/{id} returns 200 and forwards the update")
     void updateTicket_returns200() throws Exception {
-        when(ticketService.updateTicket(eq(5L), any(TicketRequestDto.class))).thenReturn(sampleTicket(5L));
+        when(ticketService.updateTicket(eq(5L), any(TicketUpdateDto.class))).thenReturn(sampleTicket(5L));
 
         String body = """
                 {
@@ -158,7 +159,7 @@ class TicketControllerTest {
                         .content(body))
                 .andExpect(status().isOk());
 
-        verify(ticketService).updateTicket(eq(5L), any(TicketRequestDto.class));
+        verify(ticketService).updateTicket(eq(5L), any(TicketUpdateDto.class));
     }
 
     @Test

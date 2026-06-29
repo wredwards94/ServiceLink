@@ -2,6 +2,7 @@ package com.wesleyedwards.ServiceLink.service;
 
 import com.wesleyedwards.ServiceLink.dtos.TicketRequestDto;
 import com.wesleyedwards.ServiceLink.dtos.TicketResponseDto;
+import com.wesleyedwards.ServiceLink.dtos.TicketUpdateDto;
 import com.wesleyedwards.ServiceLink.enums.TicketPriority;
 import com.wesleyedwards.ServiceLink.enums.TicketStatus;
 import org.springframework.data.domain.Page;
@@ -19,7 +20,7 @@ public interface TicketService {
 
     void deleteTicketById(Long id);
 
-    TicketResponseDto updateTicket(Long id, TicketRequestDto updatedTicket);
+    TicketResponseDto updateTicket(Long id, TicketUpdateDto updatedTicket);
 
     List<TicketResponseDto> getAllTicketsByStatus(TicketStatus status);
 

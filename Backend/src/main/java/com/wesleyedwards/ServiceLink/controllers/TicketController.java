@@ -3,9 +3,11 @@ package com.wesleyedwards.ServiceLink.controllers;
 import com.wesleyedwards.ServiceLink.config.UserPrincipal;
 import com.wesleyedwards.ServiceLink.dtos.TicketRequestDto;
 import com.wesleyedwards.ServiceLink.dtos.TicketResponseDto;
+import com.wesleyedwards.ServiceLink.dtos.TicketUpdateDto;
 import com.wesleyedwards.ServiceLink.service.TicketService;
 import com.wesleyedwards.ServiceLink.enums.TicketPriority;
 import com.wesleyedwards.ServiceLink.enums.TicketStatus;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -34,7 +36,7 @@ public class TicketController {
 
 
     @PostMapping("/newticket/requester")
-    public ResponseEntity<TicketResponseDto> createTicket(@RequestBody TicketRequestDto createdTicket,
+    public ResponseEntity<TicketResponseDto> createTicket(@Valid @RequestBody TicketRequestDto createdTicket,
                                                           @AuthenticationPrincipal UserPrincipal user) {
         return ResponseEntity.status(HttpStatus.CREATED).body(ticketService.createTicket(createdTicket, user.getUserId()));
     }
@@ -51,7 +53,7 @@ public class TicketController {
     }
 
     @PatchMapping("/{id}")
-    public ResponseEntity<TicketResponseDto> updateTicket(@PathVariable Long id, @RequestBody TicketRequestDto updatedTicket) {
+    public ResponseEntity<TicketResponseDto> updateTicket(@PathVariable Long id, @Valid @RequestBody TicketUpdateDto updatedTicket) {
         return ResponseEntity.ok(ticketService.updateTicket(id, updatedTicket));
     }
 

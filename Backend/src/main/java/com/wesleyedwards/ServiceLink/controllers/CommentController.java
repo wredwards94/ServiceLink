@@ -4,6 +4,7 @@ import com.wesleyedwards.ServiceLink.config.UserPrincipal;
 import com.wesleyedwards.ServiceLink.dtos.CommentRequestDto;
 import com.wesleyedwards.ServiceLink.dtos.CommentResponseDto;
 import com.wesleyedwards.ServiceLink.service.CommentService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -23,7 +24,7 @@ public class CommentController {
     @PostMapping("/ticket/{ticketId}")
     public ResponseEntity<CommentResponseDto> addComment(@PathVariable Long ticketId,
                                                          @AuthenticationPrincipal UserPrincipal user,
-                                                         @RequestBody CommentRequestDto commentRequest) {
+                                                         @Valid @RequestBody CommentRequestDto commentRequest) {
         return ResponseEntity.status(HttpStatus.CREATED).body(commentService.addCommentToTicket(ticketId, user.getUserId(),
                 commentRequest));
     }
@@ -41,7 +42,7 @@ public class CommentController {
 
     @PutMapping("/{commentId}")
     public ResponseEntity<CommentResponseDto> updateComment(@PathVariable Long commentId,
-                                                            @RequestBody CommentRequestDto updatedComment) {
+                                                            @Valid @RequestBody CommentRequestDto updatedComment) {
         return ResponseEntity.ok(commentService.updateComment(commentId, updatedComment));
     }
 

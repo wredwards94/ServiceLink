@@ -1,0 +1,84 @@
+<!-- Modal Backdrop -->
+<div class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center">
+
+  <!-- Modal -->
+  <div class="bg-gray-800 rounded-lg w-full max-w-lg p-6 shadow-xl">
+
+    <!-- Header -->
+    <div class="flex justify-between items-center mb-6">
+      <h2 class="text-lg font-semibold text-white">New Ticket</h2>
+      <button (click)="close()" class="text-gray-400 hover:text-white">✕</button>
+    </div>
+
+    <!-- Form -->
+    <div class="space-y-4">
+      <div>
+        <label class="block text-sm text-gray-400 mb-1">Title</label>
+        <input
+          [(ngModel)]="ticket.title"
+          type="text"
+          placeholder="Enter ticket title"
+          class="w-full bg-gray-900 text-white text-sm rounded-lg px-4 py-2 border border-gray-700 focus:border-indigo-500 outline-none"/>
+      </div>
+
+      <div>
+        <label class="block text-sm text-gray-400 mb-1">Description</label>
+        <textarea
+          [(ngModel)]="ticket.description"
+          rows="3"
+          placeholder="Describe the issue"
+          class="w-full bg-gray-900 text-white text-sm rounded-lg px-4 py-2 border border-gray-700 focus:border-indigo-500 outline-none resize-none">
+        </textarea>
+      </div>
+
+      <div>
+        <label class="block text-sm text-gray-400 mb-1">Category</label>
+        <input
+          [(ngModel)]="ticket.category"
+          type="text"
+          placeholder="e.g. Technical, Billing"
+          class="w-full bg-gray-900 text-white text-sm rounded-lg px-4 py-2 border border-gray-700 focus:border-indigo-500 outline-none"/>
+      </div>
+
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm text-gray-400 mb-1">Status</label>
+          <select
+            [(ngModel)]="ticket.status"
+            class="w-full bg-gray-900 text-white text-sm rounded-lg px-4 py-2 border border-gray-700 focus:border-indigo-500 outline-none">
+            @for (status of statuses; track status) {
+              <option [value]="status">{{ status }}</option>
+            }
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-sm text-gray-400 mb-1">Priority</label>
+          <select
+            [(ngModel)]="ticket.priority"
+            class="w-full bg-gray-900 text-white text-sm rounded-lg px-4 py-2 border border-gray-700 focus:border-indigo-500 outline-none">
+            @for (priority of priorities; track priority) {
+              <option [value]="priority">{{ priority }}</option>
+            }
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="flex justify-end gap-3 mt-6">
+      <button
+        (click)="close()"
+        class="px-4 py-2 text-sm text-gray-400 hover:text-white">
+        Cancel
+      </button>
+      <button
+        (click)="submit()"
+        [disabled]="isSubmitting || !ticket.title || !ticket.description || !ticket.category"
+        class="bg-indigo-500 hover:bg-indigo-400 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm px-4 py-2 rounded-md">
+        {{ isSubmitting ? 'Creating...' : 'Create Ticket' }}
+      </button>
+    </div>
+
+  </div>
+</div>
