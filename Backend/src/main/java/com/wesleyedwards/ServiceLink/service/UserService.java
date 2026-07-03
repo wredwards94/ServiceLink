@@ -2,6 +2,7 @@ package com.wesleyedwards.ServiceLink.service;
 
 import com.wesleyedwards.ServiceLink.dtos.*;
 import com.wesleyedwards.ServiceLink.enums.Role;
+import jakarta.validation.Valid;
 
 import java.util.List;
 import java.util.UUID;
@@ -20,4 +21,6 @@ public interface UserService {
     UserResponseDto updateUserRole(UUID userId, Role role);
 
     void deleteuser(UUID userId);
+
+    void changePassword(UUID userId, @Valid ChangePasswordRequestDto dto);
 }

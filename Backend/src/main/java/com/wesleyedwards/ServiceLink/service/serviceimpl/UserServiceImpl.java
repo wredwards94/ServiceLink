@@ -7,10 +7,8 @@ import com.wesleyedwards.ServiceLink.entities.User;
 import com.wesleyedwards.ServiceLink.enums.Role;
 import com.wesleyedwards.ServiceLink.exceptions.BadRequestException;
 import com.wesleyedwards.ServiceLink.exceptions.NotFoundException;
-import com.wesleyedwards.ServiceLink.mappers.CredentialsMapper;
 import com.wesleyedwards.ServiceLink.mappers.ProfileMapper;
 import com.wesleyedwards.ServiceLink.mappers.UserMapper;
-import com.wesleyedwards.ServiceLink.repositories.TicketRepository;
 import com.wesleyedwards.ServiceLink.repositories.UserRepository;
 import com.wesleyedwards.ServiceLink.service.UserService;
 import lombok.RequiredArgsConstructor;
@@ -103,6 +101,17 @@ public class UserServiceImpl implements UserService {
 
         foundUser.setDisabled(true);
         userRepository.saveAndFlush(foundUser);
+    }
+
+    @Override
+    public void changePassword(UUID userId, ChangePasswordRequestDto dto) {
+        User foundUser = checkUserExists(userId);
+
+        if(!passwordEncoder.matches(dto.currentPassword(), foundUser.getCredentials().getPassword()))
+            throw new BadRequestException("Invalid password");
+
+        foundUser.getCredentials().setPassword(passwordEncoder.encode(dto.newPassword()));
+        userRepository.save(foundUser);
     }
 
     private User checkUserExists(UUID userId) {

@@ -1,11 +1,13 @@
 package com.wesleyedwards.ServiceLink.controllers;
 
+import com.wesleyedwards.ServiceLink.config.UserPrincipal;
 import com.wesleyedwards.ServiceLink.dtos.*;
 import com.wesleyedwards.ServiceLink.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -52,5 +54,12 @@ public class UserController {
     @PatchMapping("/{userId}/role")
     public ResponseEntity<UserResponseDto> updateRole(@PathVariable UUID userId, @Valid @RequestBody RoleRequestDto request) {
         return ResponseEntity.ok(userService.updateUserRole(userId, request.role()));
+    }
+
+    @PatchMapping("/password")
+    public ResponseEntity<Void> changePassword(@AuthenticationPrincipal UserPrincipal principal,
+                                               @Valid @RequestBody ChangePasswordRequestDto dto) {
+        userService.changePassword(principal.getUserId(), dto);
+        return ResponseEntity.noContent().build();
     }
 }
