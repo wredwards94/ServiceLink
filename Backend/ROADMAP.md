@@ -25,8 +25,13 @@ New users default to `Role.USER` and there was no way to change that. Added an a
 **Block disabled users from authenticating.** ✅ *Done.*
 `deleteuser` sets `isDisabled = true` (soft delete), but login previously ignored the flag. Reworked `login` to delegate to Spring's `AuthenticationManager` / `DaoAuthenticationProvider`, which runs `UserPrincipal.isEnabled()` (wired to `!isDisabled`) and throws `DisabledException` for disabled accounts and `BadCredentialsException` for bad passwords. This also removed the manual password check and a duplicate DB lookup (identity now read off the returned `Authentication` principal). Added `@ExceptionHandler`s mapping `BadCredentialsException` → 401 and `DisabledException` → 403, and updated the `UserServiceImpl` unit tests. *(Note: a JWT issued before disabling stays valid until expiry — add an `isEnabled()` guard in `JwtAuthFilter` if immediate lockout is needed.)*
 
-**Password management.**
-Only register and login exist. Add change-password (authenticated) and a forgot/reset-password flow.
+**Password management.** 🟡 *In progress.*
+Only register and login existed. Added:
+- ✅ *Change password* (`PATCH /api/users/password`): authenticated, identity from the JWT principal, verifies the current password before setting the new one.
+- ✅ *Forgot password* (`POST /api/users/auth/forgot-password`): looks up the user by email, persists a single-use `PasswordResetToken` (15-min expiry), and "sends" it by logging the token (stub — swap the log line for `JavaMailSender` when SMTP is set up). Always returns 200 to avoid leaking which emails are registered.
+- ⬜ *Reset password* (`POST /api/users/auth/reset-password`): still to build — validate token (exists / not used / not expired) → encode new password → mark token used.
+
+Deferred (see code-quality notes): replace the `PasswordResetToken` setters with a factory.
 
 **Consistent delete semantics.**
 Users soft-delete while tickets hard-delete (`deleteTicketById`). Decide on one model; for an audit-sensitive support tool, soft-delete (archive) for tickets is usually preferable.
@@ -108,6 +113,14 @@ Throttle auth endpoints to resist brute-force attempts.
 **Knowledge base.**
 FAQ / help articles so common questions can be deflected before they become tickets.
 
+**CI/CD & deployment hardening.**
+Stand up automated build/test/deploy and make the app deployable outside localhost:
+- *CI test gate:* 🟡 *Started* — `.github/workflows/ci.yml` runs `./mvnw verify` (compile + JUnit tests) on every push/PR with a Postgres service container and env-var datasource overrides. Future upgrade: switch the `@SpringBootTest` context test to **Testcontainers** (`@ServiceConnection`) so local and CI use the same real Postgres and the DB config no longer lives only in the workflow (removes the dev/CI parity gap).
+- *Externalize configuration:* move the hardcoded datasource (`localhost:5433`) and the committed `jwt.secret` out of `application.properties` into environment variables / a secrets store before any real deploy.
+- *Database migrations:* replace `ddl-auto=create-drop` (which wipes the schema on every startup) with Flyway or Liquibase for durable, versioned schema changes.
+- *Containerize:* add a `Dockerfile` and a Postgres service (compose for local, managed DB for deployed environments).
+- *CD stage:* build the image and deploy on a tagged release or merge to main. (See existing `DEPLOYMENT.md`.)
+
 ---
 
 ## Suggested sequencing summary
@@ -119,4 +132,12 @@ FAQ / help articles so common questions can be deflected before they become tick
 | 3 | Collaboration, notifications, SLAs | Improves responsiveness once core is solid |
 | 4 | Insight & platform maturity | Reporting and operational hardening for scale |
 
-*Roadmap generated from a review of the current codebase. No application code was modified.*
+---
+
+## Deferred refactors & code-quality notes
+
+Small, non-blocking cleanups to revisit during a dedicated code-revision pass:
+
+- **`PasswordResetToken` construction.** Replace the raw setters in `forgotPassword` with a static factory (`PasswordResetToken.issueFor(user, Duration)`) so tokens are valid-by-construction — both `token` and `expiresAt` are `nullable = false`, and a factory prevents a forgotten field from becoming a runtime constraint violation. Builder is an option but heavier than needed for three required fields; prefer a private constructor + factory.
+
+*Roadmap generated from a review of the current codebase.*

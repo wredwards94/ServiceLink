@@ -23,4 +23,6 @@ public interface UserService {
     void deleteuser(UUID userId);
 
     void changePassword(UUID userId, @Valid ChangePasswordRequestDto dto);
+
+    void forgotPassword(@Valid ForgotPasswordDto dto);
 }

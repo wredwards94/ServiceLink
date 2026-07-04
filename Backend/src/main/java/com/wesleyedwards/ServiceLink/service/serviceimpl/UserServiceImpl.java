@@ -3,21 +3,26 @@ package com.wesleyedwards.ServiceLink.service.serviceimpl;
 import com.wesleyedwards.ServiceLink.config.JwtUtil;
 import com.wesleyedwards.ServiceLink.config.UserPrincipal;
 import com.wesleyedwards.ServiceLink.dtos.*;
+import com.wesleyedwards.ServiceLink.entities.PasswordResetToken;
 import com.wesleyedwards.ServiceLink.entities.User;
 import com.wesleyedwards.ServiceLink.enums.Role;
 import com.wesleyedwards.ServiceLink.exceptions.BadRequestException;
 import com.wesleyedwards.ServiceLink.exceptions.NotFoundException;
 import com.wesleyedwards.ServiceLink.mappers.ProfileMapper;
 import com.wesleyedwards.ServiceLink.mappers.UserMapper;
+import com.wesleyedwards.ServiceLink.repositories.PasswordResetTokenRepository;
 import com.wesleyedwards.ServiceLink.repositories.UserRepository;
 import com.wesleyedwards.ServiceLink.service.UserService;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -26,11 +31,13 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class UserServiceImpl implements UserService {
     private final UserRepository userRepository;
+    private final PasswordResetTokenRepository passwordResetTokenRepository;
     private final UserMapper userMapper;
     private final ProfileMapper profileMapper;
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
     private final JwtUtil jwtUtil;
+    private final Logger log = LoggerFactory.getLogger(UserServiceImpl.class);
 
     @Override
     public UserResponseDto createUser(UserRequestDto newUser) {
@@ -112,6 +119,19 @@ public class UserServiceImpl implements UserService {
 
         foundUser.getCredentials().setPassword(passwordEncoder.encode(dto.newPassword()));
         userRepository.save(foundUser);
+    }
+
+    @Override
+    public void forgotPassword(ForgotPasswordDto dto) {
+        userRepository.findByProfileEmail(dto.email()).ifPresent(user -> {
+            // create + save token, then log it
+            PasswordResetToken token = new PasswordResetToken();
+            token.setToken(UUID.randomUUID().toString());
+            token.setUser(user);
+            token.setExpiresAt(LocalDateTime.now().plusMinutes(15));
+            passwordResetTokenRepository.save(token);
+            log.info("Password reset token for {}: {}", dto.email(), token.getToken());
+        });
     }
 
     private User checkUserExists(UUID userId) {
