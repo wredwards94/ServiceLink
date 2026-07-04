@@ -5,16 +5,20 @@ import com.wesleyedwards.ServiceLink.config.UserPrincipal;
 import com.wesleyedwards.ServiceLink.dtos.CredentialsRequestDto;
 import com.wesleyedwards.ServiceLink.dtos.ProfileRequestDto;
 import com.wesleyedwards.ServiceLink.dtos.ProfileUpdateDto;
+import com.wesleyedwards.ServiceLink.dtos.ResetPasswordDto;
 import com.wesleyedwards.ServiceLink.dtos.UserIdResponseDto;
 import com.wesleyedwards.ServiceLink.dtos.UserRequestDto;
 import com.wesleyedwards.ServiceLink.dtos.UserResponseDto;
 import com.wesleyedwards.ServiceLink.entities.Credentials;
+import com.wesleyedwards.ServiceLink.entities.PasswordResetToken;
 import com.wesleyedwards.ServiceLink.entities.Profile;
 import com.wesleyedwards.ServiceLink.entities.User;
 import com.wesleyedwards.ServiceLink.enums.Role;
+import com.wesleyedwards.ServiceLink.exceptions.BadRequestException;
 import com.wesleyedwards.ServiceLink.exceptions.NotFoundException;
 import com.wesleyedwards.ServiceLink.mappers.ProfileMapper;
 import com.wesleyedwards.ServiceLink.mappers.UserMapper;
+import com.wesleyedwards.ServiceLink.repositories.PasswordResetTokenRepository;
 import com.wesleyedwards.ServiceLink.repositories.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -31,11 +35,13 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -54,6 +60,7 @@ class UserServiceImplTest {
     @Mock private PasswordEncoder passwordEncoder;
     @Mock private AuthenticationManager authenticationManager;
     @Mock private JwtUtil jwtUtil;
+    @Mock private PasswordResetTokenRepository passwordResetTokenRepository;
 
     @InjectMocks private UserServiceImpl userService;
 
@@ -200,5 +207,71 @@ class UserServiceImplTest {
 
         assertThrows(NotFoundException.class, () -> userService.deleteuser(userId));
         verify(userRepository, never()).saveAndFlush(any());
+    }
+
+    private PasswordResetToken resetToken(String value, boolean used, LocalDateTime expiresAt) {
+        PasswordResetToken token = new PasswordResetToken();
+        token.setToken(value);
+        token.setUser(user);
+        token.setUsed(used);
+        token.setExpiresAt(expiresAt);
+        return token;
+    }
+
+    @Test
+    @DisplayName("resetPassword sets the new password, saves, and marks the token used")
+    void resetPassword_success() {
+        PasswordResetToken token = resetToken("tok-123", false, LocalDateTime.now().plusMinutes(10));
+        ResetPasswordDto dto = new ResetPasswordDto("tok-123", "new-strong-pw");
+
+        when(passwordResetTokenRepository.findByToken("tok-123")).thenReturn(token);
+        when(passwordEncoder.encode("new-strong-pw")).thenReturn("hashed-new");
+
+        userService.resetPassword(dto);
+
+        assertEquals("hashed-new", user.getCredentials().getPassword());
+        assertTrue(token.isUsed());
+        verify(userRepository).save(user);
+        verify(passwordResetTokenRepository).save(token);
+    }
+
+    @Test
+    @DisplayName("resetPassword throws BadRequestException when the token is unknown")
+    void resetPassword_tokenNotFound() {
+        when(passwordResetTokenRepository.findByToken("missing")).thenReturn(null);
+
+        assertThrows(BadRequestException.class,
+                () -> userService.resetPassword(new ResetPasswordDto("missing", "new-strong-pw")));
+
+        verify(passwordEncoder, never()).encode(any());
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("resetPassword throws BadRequestException when the token was already used")
+    void resetPassword_tokenUsed() {
+        PasswordResetToken token = resetToken("tok-used", true, LocalDateTime.now().plusMinutes(10));
+        when(passwordResetTokenRepository.findByToken("tok-used")).thenReturn(token);
+
+        assertThrows(BadRequestException.class,
+                () -> userService.resetPassword(new ResetPasswordDto("tok-used", "new-strong-pw")));
+
+        verify(passwordEncoder, never()).encode(any());
+        verify(userRepository, never()).save(any());
+        assertTrue(token.isUsed());
+    }
+
+    @Test
+    @DisplayName("resetPassword throws BadRequestException when the token has expired")
+    void resetPassword_tokenExpired() {
+        PasswordResetToken token = resetToken("tok-old", false, LocalDateTime.now().minusMinutes(1));
+        when(passwordResetTokenRepository.findByToken("tok-old")).thenReturn(token);
+
+        assertThrows(BadRequestException.class,
+                () -> userService.resetPassword(new ResetPasswordDto("tok-old", "new-strong-pw")));
+
+        verify(passwordEncoder, never()).encode(any());
+        verify(userRepository, never()).save(any());
+        assertFalse(token.isUsed());
     }
 }

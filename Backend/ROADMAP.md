@@ -25,11 +25,11 @@ New users default to `Role.USER` and there was no way to change that. Added an a
 **Block disabled users from authenticating.** ✅ *Done.*
 `deleteuser` sets `isDisabled = true` (soft delete), but login previously ignored the flag. Reworked `login` to delegate to Spring's `AuthenticationManager` / `DaoAuthenticationProvider`, which runs `UserPrincipal.isEnabled()` (wired to `!isDisabled`) and throws `DisabledException` for disabled accounts and `BadCredentialsException` for bad passwords. This also removed the manual password check and a duplicate DB lookup (identity now read off the returned `Authentication` principal). Added `@ExceptionHandler`s mapping `BadCredentialsException` → 401 and `DisabledException` → 403, and updated the `UserServiceImpl` unit tests. *(Note: a JWT issued before disabling stays valid until expiry — add an `isEnabled()` guard in `JwtAuthFilter` if immediate lockout is needed.)*
 
-**Password management.** 🟡 *In progress.*
+**Password management.** ✅ *Done.*
 Only register and login existed. Added:
 - ✅ *Change password* (`PATCH /api/users/password`): authenticated, identity from the JWT principal, verifies the current password before setting the new one.
 - ✅ *Forgot password* (`POST /api/users/auth/forgot-password`): looks up the user by email, persists a single-use `PasswordResetToken` (15-min expiry), and "sends" it by logging the token (stub — swap the log line for `JavaMailSender` when SMTP is set up). Always returns 200 to avoid leaking which emails are registered.
-- ⬜ *Reset password* (`POST /api/users/auth/reset-password`): still to build — validate token (exists / not used / not expired) → encode new password → mark token used.
+- ✅ *Reset password* (`POST /api/users/auth/reset-password`): validates the token (exists / not used / not expired) with a single generic 400 message, encodes the new password, and marks the token used (single-use). Shared `setEncodedPassword` helper keeps hashing consistent across all three flows.
 
 Deferred (see code-quality notes): replace the `PasswordResetToken` setters with a factory.
 

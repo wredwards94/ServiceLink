@@ -42,9 +42,7 @@ public class UserServiceImpl implements UserService {
     @Override
     public UserResponseDto createUser(UserRequestDto newUser) {
         User user = userMapper.requestDtoToEntity(newUser);
-        user.getCredentials().setPassword(
-                passwordEncoder.encode(user.getCredentials().getPassword())
-        );
+        setEncodedPassword(user, newUser.credentials().password());
         userRepository.saveAndFlush(user);
         return userMapper.entityToResponseDto(user);
     }
@@ -117,7 +115,7 @@ public class UserServiceImpl implements UserService {
         if(!passwordEncoder.matches(dto.currentPassword(), foundUser.getCredentials().getPassword()))
             throw new BadRequestException("Invalid password");
 
-        foundUser.getCredentials().setPassword(passwordEncoder.encode(dto.newPassword()));
+        setEncodedPassword(foundUser, dto.newPassword());
         userRepository.save(foundUser);
     }
 
@@ -134,6 +132,23 @@ public class UserServiceImpl implements UserService {
         });
     }
 
+    @Override
+    public void resetPassword(ResetPasswordDto dto) {
+        PasswordResetToken token = passwordResetTokenRepository.findByToken(dto.token());
+
+        if(token == null) throw new BadRequestException("Invalid or expired token");
+
+        if(token.isUsed()) throw new BadRequestException("Invalid or expired token");
+
+        if(token.getExpiresAt().isBefore(LocalDateTime.now())) throw new BadRequestException("Invalid or expired token");
+
+        User user = token.getUser();
+        setEncodedPassword(user, dto.newPassword());
+        userRepository.save(user);
+        token.setUsed(true);
+        passwordResetTokenRepository.save(token);
+    }
+
     private User checkUserExists(UUID userId) {
         Optional<User> optionalUser = userRepository.findById(userId);
 
@@ -142,11 +157,7 @@ public class UserServiceImpl implements UserService {
         return optionalUser.get();
     }
 
-//    private User checkUserExistsByUsername(String username) {
-//        Optional<User> optionalUser = userRepository.findByCredentialsUsername(username);
-//
-//        if(optionalUser.isEmpty()) throw new NotFoundException("User: " + username + " does not exist");
-//
-//        return optionalUser.get();
-//    }
+    private void setEncodedPassword(User user, String password) {
+        user.getCredentials().setPassword(passwordEncoder.encode(password));
+    }
 }

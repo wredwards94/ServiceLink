@@ -3,6 +3,7 @@ package com.wesleyedwards.ServiceLink.controllers;
 import com.wesleyedwards.ServiceLink.config.UserPrincipal;
 import com.wesleyedwards.ServiceLink.dtos.*;
 import com.wesleyedwards.ServiceLink.service.UserService;
+import jakarta.transaction.Transactional;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -69,5 +70,10 @@ public class UserController {
         return ResponseEntity.ok().build();
     }
 
-//    @PostMapping("/auth/reset-password")
+    @Transactional
+    @PostMapping("/auth/reset-password")
+    public ResponseEntity<Void> resetPassword(@Valid @RequestBody ResetPasswordDto dto) {
+        userService.resetPassword(dto);
+        return ResponseEntity.ok().build();
+    }
 }

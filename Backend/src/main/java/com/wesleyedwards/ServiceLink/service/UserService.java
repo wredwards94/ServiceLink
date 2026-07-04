@@ -25,4 +25,6 @@ public interface UserService {
     void changePassword(UUID userId, @Valid ChangePasswordRequestDto dto);
 
     void forgotPassword(@Valid ForgotPasswordDto dto);
+
+    void resetPassword(@Valid ResetPasswordDto dto);
 }
