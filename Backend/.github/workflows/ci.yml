@@ -17,6 +17,12 @@ jobs:
     name: Build & Test
     runs-on: ubuntu-latest
 
+    # The Maven project lives in the Backend/ subfolder of the repo, so run all
+    # shell steps from there. (Remove this block if Backend is your repo root.)
+    defaults:
+      run:
+        working-directory: Backend
+
     # A throwaway Postgres for the tests. The @SpringBootTest context test needs
     # a real database; this container is created fresh for the job and torn down
     # after. It's reachable at localhost:5432 from the build steps.
