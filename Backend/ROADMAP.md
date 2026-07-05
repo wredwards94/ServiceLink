@@ -119,7 +119,7 @@ FAQ / help articles so common questions can be deflected before they become tick
 
 **CI/CD & deployment hardening.**
 Stand up automated build/test/deploy and make the app deployable outside localhost:
-- *CI test gate:* 🟡 *Started* — `.github/workflows/ci.yml` runs `./mvnw verify` (compile + JUnit tests) on every push/PR with a Postgres service container and env-var datasource overrides. Future upgrade: switch the `@SpringBootTest` context test to **Testcontainers** (`@ServiceConnection`) so local and CI use the same real Postgres and the DB config no longer lives only in the workflow (removes the dev/CI parity gap).
+- *CI test gate:* ✅ *Done* — `.github/workflows/ci.yml` runs `./mvnw verify` (compile + JUnit tests) on every push/PR. The `@SpringBootTest` context test uses **Testcontainers** (`PostgreSQLContainer` + `@ServiceConnection`), so the test owns its Postgres and local/CI behave identically — no service block or datasource config in the workflow (dev/CI parity gap closed). *Note: running the full suite locally now requires Docker. Future: if more `@SpringBootTest` classes are added, move the container to a shared abstract base class to reuse one instance.*
 - *Externalize configuration:* move the hardcoded datasource (`localhost:5433`) and the committed `jwt.secret` out of `application.properties` into environment variables / a secrets store before any real deploy.
 - *Database migrations:* replace `ddl-auto=create-drop` (which wipes the schema on every startup) with Flyway or Liquibase for durable, versioned schema changes.
 - *Containerize:* add a `Dockerfile` and a Postgres service (compose for local, managed DB for deployed environments).
