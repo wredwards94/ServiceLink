@@ -1,13 +1,10 @@
 name: CI
 
-# Run on every branch push and on pull requests, so a broken build is caught
-# before it merges.
 on:
   push:
     branches: ["**"]
   pull_request:
 
-# If you push again while a run is still going, cancel the older one.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -17,43 +14,10 @@ jobs:
     name: Build & Test
     runs-on: ubuntu-latest
 
-    # The Maven project lives in the Backend/ subfolder of the repo, so run all
-    # shell steps from there. (Remove this block if Backend is your repo root.)
+    # The Maven project lives in the Backend/ subfolder of the repo.
     defaults:
       run:
         working-directory: Backend
-
-    # A throwaway Postgres for the tests. The @SpringBootTest context test needs
-    # a real database; this container is created fresh for the job and torn down
-    # after. It's reachable at localhost:5432 from the build steps.
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: servicelink
-        ports:
-          - 5432:5432
-        # Don't start the build until Postgres reports healthy.
-        options: >-
-          --health-cmd "pg_isready -U postgres"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
-    # These override the values hardcoded in application.properties via Spring's
-    # relaxed binding (SPRING_DATASOURCE_URL -> spring.datasource.url, etc.), so
-    # the app points at the CI Postgres instead of localhost:5433.
-    env:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/servicelink
-      SPRING_DATASOURCE_USERNAME: postgres
-      SPRING_DATASOURCE_PASSWORD: postgres
-      # Pulled from a GitHub Actions secret. Add it under
-      # Settings > Secrets and variables > Actions. (Tests pass without it, but
-      # this is the pattern you'll reuse for real secrets in deploy stages.)
-      JWT_SECRET: ${{ secrets.JWT_SECRET }}
-      JWT_EXPIRATION: "86400000"
 
     steps:
       - name: Check out code
@@ -64,8 +28,6 @@ jobs:
         with:
           distribution: temurin
           java-version: "17"
-          # Caches ~/.m2 keyed on the pom, so dependencies aren't re-downloaded
-          # every run.
           cache: maven
 
       - name: Make the Maven wrapper executable
