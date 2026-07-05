@@ -24,7 +24,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -188,16 +187,14 @@ class UserServiceImplTest {
     }
 
     @Test
-    @DisplayName("deleteuser performs a soft delete by disabling the user")
+    @DisplayName("deleteuser soft-deletes the user via repository delete")
     void deleteUser_softDeletes() {
         when(userRepository.findById(userId)).thenReturn(Optional.of(user));
 
         userService.deleteuser(userId);
 
-        ArgumentCaptor<User> captor = ArgumentCaptor.forClass(User.class);
-        verify(userRepository).saveAndFlush(captor.capture());
-        assertTrue(captor.getValue().isDisabled());
-        verify(userRepository, never()).deleteById(any());
+        // @SoftDelete turns this delete() into an UPDATE ... SET deleted = true.
+        verify(userRepository).delete(user);
     }
 
     @Test

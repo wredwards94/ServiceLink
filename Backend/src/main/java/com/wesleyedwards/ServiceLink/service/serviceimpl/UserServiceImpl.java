@@ -103,9 +103,7 @@ public class UserServiceImpl implements UserService {
     @Override
     public void deleteuser(UUID userId) {
         User foundUser = checkUserExists(userId);
-
-        foundUser.setDisabled(true);
-        userRepository.saveAndFlush(foundUser);
+        userRepository.delete(foundUser);
     }
 
     @Override
@@ -147,6 +145,13 @@ public class UserServiceImpl implements UserService {
         userRepository.save(user);
         token.setUsed(true);
         passwordResetTokenRepository.save(token);
+    }
+
+    @Override
+    public void setUserStatus(UUID id, StatusRequestDto statusDto) {
+        User user = checkUserExists(id);
+        user.setDisabled(statusDto.isDisabled());
+        userRepository.save(user);
     }
 
     private User checkUserExists(UUID userId) {

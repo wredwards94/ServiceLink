@@ -6,9 +6,9 @@ Each item notes the relevant code so work can start quickly.
 
 ---
 
-## Phase 1 — Foundations & security correctness (now)
+## Phase 1 — Foundations & security correctness ✅ COMPLETE
 
-These close gaps that affect data integrity and trust. They are relatively small but high-impact, and several later features depend on them.
+These close gaps that affect data integrity and trust. They are relatively small but high-impact, and several later features depend on them. All items done: JWT-derived identity, SecurityConfig ordering fix, role management, request validation, disabled-user login block, password management (change / forgot / reset), and consistent soft-delete semantics.
 
 **Derive the acting user from the JWT, not request params.** ✅ *Done.*
 `createTicket` and `addComment` previously took `requesterId` / `authorId` as query params, so a caller could act as any user. Introduced a `UserPrincipal` (implements `UserDetails`, carries the `UUID`), returned it from `UserDetailsServiceImpl`, and the controllers now read the actor via `@AuthenticationPrincipal`. Controller tests updated to seed the principal into the security context. This is a prerequisite for ownership rules and notifications. *(Assignment endpoints still take an explicit `userId` — that refers to the assignee, not the actor, which is correct.)*
@@ -19,8 +19,8 @@ Rules are evaluated top-to-bottom (first match wins), and the broad `/api/ticket
 **Role management endpoint.** ✅ *Done.*
 New users default to `Role.USER` and there was no way to change that. Added an admin-only `PATCH /api/users/{userId}/role` (with a `RoleRequestDto`) backed by `updateUserRole` in the service. Secured via a `requestMatchers(PATCH, "/api/users/*/role").hasRole("ADMIN")` rule placed before the catch-all so it can't be shadowed.
 
-**Request validation.**
-`spring-boot-starter-validation` is already a dependency but unused. Add `@Valid` on controller bodies and constraints (`@NotBlank`, `@Email`, `@Size`) on the request DTOs.
+**Request validation.** ✅ *Done.*
+`spring-boot-starter-validation` was on the classpath but unused. Added `@Valid` to every controller `@RequestBody` and constraints (`@NotBlank`, `@Email`, `@Size`, `@NotNull`) across the request DTOs, with the existing `MethodArgumentNotValidException` handler returning field-level 400s. Split shared DTOs so PATCH partial updates aren't rejected: `ProfileUpdateDto` / `TicketUpdateDto` carry null-tolerant constraints while the create DTOs stay strict.
 
 **Block disabled users from authenticating.** ✅ *Done.*
 `deleteuser` sets `isDisabled = true` (soft delete), but login previously ignored the flag. Reworked `login` to delegate to Spring's `AuthenticationManager` / `DaoAuthenticationProvider`, which runs `UserPrincipal.isEnabled()` (wired to `!isDisabled`) and throws `DisabledException` for disabled accounts and `BadCredentialsException` for bad passwords. This also removed the manual password check and a duplicate DB lookup (identity now read off the returned `Authentication` principal). Added `@ExceptionHandler`s mapping `BadCredentialsException` → 401 and `DisabledException` → 403, and updated the `UserServiceImpl` unit tests. *(Note: a JWT issued before disabling stays valid until expiry — add an `isEnabled()` guard in `JwtAuthFilter` if immediate lockout is needed.)*
@@ -33,8 +33,12 @@ Only register and login existed. Added:
 
 Deferred (see code-quality notes): replace the `PasswordResetToken` setters with a factory.
 
-**Consistent delete semantics.**
-Users soft-delete while tickets hard-delete (`deleteTicketById`). Decide on one model; for an audit-sensitive support tool, soft-delete (archive) for tickets is usually preferable.
+**Consistent delete semantics.** ✅ *Done.*
+Previously users soft-deleted (via `isDisabled`) while tickets and comments hard-deleted. Standardized on soft delete using Hibernate's `@SoftDelete` on all three entities (`User`, `Ticket`, `Comment`) — `delete()`/`deleteById()` now issues an `UPDATE ... SET deleted = true` and every query auto-filters deleted rows. `Profile` is left untouched (it's an `@Embeddable`, not an entity). `deleteuser` now performs a real soft delete instead of setting `isDisabled`.
+
+Along the way, `isDisabled` was repurposed into a distinct **suspend/ban** feature (separate from deletion): an admin can toggle it, and the existing login enforcement (`UserPrincipal.isEnabled()` → `DisabledException` → 403) now backs a real capability rather than dead code.
+
+*Known caveats (see code-quality notes): soft delete doesn't release the `unique` constraints on `username`/`email` (a deleted user's values stay reserved), and `@SoftDelete` doesn't cascade — `Ticket` keeps `cascade = REMOVE` so a deleted ticket also soft-deletes its comments.*
 
 ---
 

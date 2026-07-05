@@ -76,4 +76,10 @@ public class UserController {
         userService.resetPassword(dto);
         return ResponseEntity.ok().build();
     }
+
+    @PatchMapping("/{id}/status")
+    public ResponseEntity<Void> setUserStatus(@PathVariable UUID id, StatusRequestDto statusDto) {
+        userService.setUserStatus(id, statusDto);
+        return ResponseEntity.noContent().build();
+    }
 }

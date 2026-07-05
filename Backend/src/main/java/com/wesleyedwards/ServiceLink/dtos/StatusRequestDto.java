@@ -1,4 +1,3 @@
 package com.wesleyedwards.ServiceLink.dtos;
 
-public record StatusRequestDto() {
-}
+public record StatusRequestDto(boolean isDisabled) {}

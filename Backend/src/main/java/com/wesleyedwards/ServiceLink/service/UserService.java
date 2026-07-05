@@ -27,4 +27,6 @@ public interface UserService {
     void forgotPassword(@Valid ForgotPasswordDto dto);
 
     void resetPassword(@Valid ResetPasswordDto dto);
+
+    void setUserStatus(UUID id, StatusRequestDto statusDto);
 }
