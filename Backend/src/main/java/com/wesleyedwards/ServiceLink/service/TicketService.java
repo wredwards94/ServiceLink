@@ -37,7 +37,7 @@ public interface TicketService {
 
     List<TicketResponseDto> getTicketsAssignedToUser(UUID userId);
 
-    TicketResponseDto updateTicketStatus(Long id, TicketStatus status);
+    TicketResponseDto updateTicketStatus(Long id, TicketStatusUpdateDto status);
 
 //    List<CommentResponseDto> getCommentsForTicket(Long id);
 }

@@ -113,10 +113,11 @@ public class TicketServiceImpl implements TicketService {
     }
 
     @Override
-    public TicketResponseDto updateTicketStatus(Long id, TicketStatus status) {
+    public TicketResponseDto updateTicketStatus(Long id, TicketStatusUpdateDto status) {
         Ticket foundTicket = checkTicketExists(id);
-        if (foundTicket.getStatus().canTransitionTo(status)) throw new BadRequestException("Cannot transition from " + foundTicket.getStatus() + " to " + status);
-        foundTicket.setStatus(status);
+        if (!foundTicket.getStatus().canTransitionTo(status.ticketStatus())) throw new BadRequestException("Cannot " +
+                "transition from " + foundTicket.getStatus() + " to " + status.ticketStatus());
+        foundTicket.setStatus(status.ticketStatus());
 
         return ticketMapper.entityToResponseDto(ticketRepository.saveAndFlush(foundTicket));
     }

@@ -3,6 +3,7 @@ package com.wesleyedwards.ServiceLink.controllers;
 import com.wesleyedwards.ServiceLink.config.UserPrincipal;
 import com.wesleyedwards.ServiceLink.dtos.TicketRequestDto;
 import com.wesleyedwards.ServiceLink.dtos.TicketResponseDto;
+import com.wesleyedwards.ServiceLink.dtos.TicketStatusUpdateDto;
 import com.wesleyedwards.ServiceLink.dtos.TicketUpdateDto;
 import com.wesleyedwards.ServiceLink.service.TicketService;
 import com.wesleyedwards.ServiceLink.enums.TicketPriority;
@@ -105,7 +106,7 @@ public class TicketController {
     }
 
     @PatchMapping("/{id}/status")
-    public ResponseEntity<TicketResponseDto> updateTicketStatus(@PathVariable Long id, TicketStatus status) {
+    public ResponseEntity<TicketResponseDto> updateTicketStatus(@PathVariable Long id, @Valid @RequestBody TicketStatusUpdateDto status) {
         return ResponseEntity.ok(ticketService.updateTicketStatus(id, status));
     }
 }

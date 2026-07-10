@@ -2,11 +2,13 @@ package com.wesleyedwards.ServiceLink.service.serviceimpl;
 
 import com.wesleyedwards.ServiceLink.dtos.TicketRequestDto;
 import com.wesleyedwards.ServiceLink.dtos.TicketResponseDto;
+import com.wesleyedwards.ServiceLink.dtos.TicketStatusUpdateDto;
 import com.wesleyedwards.ServiceLink.dtos.TicketUpdateDto;
 import com.wesleyedwards.ServiceLink.entities.Ticket;
 import com.wesleyedwards.ServiceLink.entities.User;
 import com.wesleyedwards.ServiceLink.enums.TicketPriority;
 import com.wesleyedwards.ServiceLink.enums.TicketStatus;
+import com.wesleyedwards.ServiceLink.exceptions.BadRequestException;
 import com.wesleyedwards.ServiceLink.exceptions.NotFoundException;
 import com.wesleyedwards.ServiceLink.mappers.TicketMapper;
 import com.wesleyedwards.ServiceLink.repositories.TicketRepository;
@@ -159,6 +161,33 @@ class TicketServiceImplTest {
         assertSame(ticketDto, ticketService.updateTicket(ticketId, update));
         verify(ticketMapper).updateTicketFromDto(update, ticket);
         verify(ticketRepository).saveAndFlush(ticket);
+    }
+
+    @Test
+    @DisplayName("updateTicketStatus applies an allowed transition and saves")
+    void updateTicketStatus_validTransition() {
+        // ticket starts NEW; NEW -> IN_PROGRESS is allowed
+        TicketStatusUpdateDto dto = new TicketStatusUpdateDto(TicketStatus.IN_PROGRESS);
+        when(ticketRepository.findById(ticketId)).thenReturn(Optional.of(ticket));
+        when(ticketRepository.saveAndFlush(ticket)).thenReturn(ticket);
+        when(ticketMapper.entityToResponseDto(ticket)).thenReturn(ticketDto);
+
+        assertSame(ticketDto, ticketService.updateTicketStatus(ticketId, dto));
+        assertEquals(TicketStatus.IN_PROGRESS, ticket.getStatus());
+        verify(ticketRepository).saveAndFlush(ticket);
+    }
+
+    @Test
+    @DisplayName("updateTicketStatus rejects an illegal transition without saving")
+    void updateTicketStatus_illegalTransition() {
+        // ticket starts NEW; NEW -> CLOSED is not allowed
+        TicketStatusUpdateDto dto = new TicketStatusUpdateDto(TicketStatus.CLOSED);
+        when(ticketRepository.findById(ticketId)).thenReturn(Optional.of(ticket));
+
+        assertThrows(BadRequestException.class,
+                () -> ticketService.updateTicketStatus(ticketId, dto));
+        assertEquals(TicketStatus.NEW, ticket.getStatus());
+        verify(ticketRepository, never()).saveAndFlush(any());
     }
 
     @Test
