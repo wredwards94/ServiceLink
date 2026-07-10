@@ -58,11 +58,11 @@ File and screenshot uploads on tickets and comments — close to essential for I
 **Internal vs. public comments.**
 Add a visibility flag so agents can leave notes the requester cannot see. (The `Comment` entity is the natural home.)
 
-**Ownership-based authorization.**
-Security is role-based only. Layer in ownership checks for resources where "who owns it" matters — this needs method-level logic (a service/controller check or `@PreAuthorize`), not just `requestMatchers` rules:
-- *Tickets:* any `AGENT` can currently edit or delete any ticket; requesters should see their own and agents act on assigned ones.
-- *User profiles:* `GET`/`PATCH /api/users/{userId}` fall to the generic `authenticated()` rule, so any logged-in user can view or edit anyone's profile by ID. A user should only edit their own profile; ADMIN can edit anyone.
-- *Comments:* a USER can't currently edit/delete their own comment (ADMIN/AGENT only) — revisit if authors should manage their own.
+**Ownership-based authorization.** 🟡 *In progress (tickets done).*
+Security was role-based only. Layering in ownership checks where "who owns it" matters — method-level logic (service-layer guards throwing `ForbiddenException` → 403), not just `requestMatchers` rules:
+- *Tickets:* ✅ Read ownership enforced — a USER sees only tickets they requested (`getAllTickets` filters; `getTicketById`/`getTicketsByRequester`/`getTicketsAssignedToUser` guard via `assertCanView`/`assertSelfOrStaff`), staff see all, 403 otherwise. Modify (edit/delete/status/assign) intentionally stays admin + any agent, already enforced by the URL rules.
+- *User profiles:* ⬜ `GET`/`PATCH /api/users/{userId}` still fall to the generic `authenticated()` rule, so any logged-in user can view/edit anyone's profile by ID. A user should only edit their own; ADMIN anyone.
+- *Comments:* ⬜ authors can't edit/delete their own comment yet (ADMIN/AGENT only) — decide whether authors should manage their own.
 
 Depends on Phase 1 (identity from JWT), which is now in place.
 
