@@ -2,6 +2,7 @@ package com.wesleyedwards.ServiceLink.service;
 
 import com.wesleyedwards.ServiceLink.dtos.TicketRequestDto;
 import com.wesleyedwards.ServiceLink.dtos.TicketResponseDto;
+import com.wesleyedwards.ServiceLink.dtos.TicketStatusUpdateDto;
 import com.wesleyedwards.ServiceLink.dtos.TicketUpdateDto;
 import com.wesleyedwards.ServiceLink.enums.TicketPriority;
 import com.wesleyedwards.ServiceLink.enums.TicketStatus;
@@ -35,6 +36,8 @@ public interface TicketService {
     List<TicketResponseDto> getTicketsByRequester(UUID requesterId);
 
     List<TicketResponseDto> getTicketsAssignedToUser(UUID userId);
+
+    TicketResponseDto updateTicketStatus(Long id, TicketStatus status);
 
 //    List<CommentResponseDto> getCommentsForTicket(Long id);
 }

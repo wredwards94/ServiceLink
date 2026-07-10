@@ -11,7 +11,6 @@ import com.wesleyedwards.ServiceLink.enums.TicketStatus;
 public record TicketUpdateDto(
         String title,
         String description,
-        TicketStatus status,
         TicketPriority priority,
         String category
 ) {}

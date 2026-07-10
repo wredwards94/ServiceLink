@@ -84,7 +84,7 @@ class TicketServiceImplTest {
     @DisplayName("createTicket attaches the requester and saves")
     void createTicket_setsRequester() {
         TicketRequestDto request = new TicketRequestDto("Login broken", "desc",
-                TicketStatus.NEW, TicketPriority.HIGH, "Technical");
+                TicketPriority.HIGH, "Technical");
         User requester = new User();
         requester.setUserId(userId);
 
@@ -103,7 +103,7 @@ class TicketServiceImplTest {
     @DisplayName("createTicket throws when the requester does not exist")
     void createTicket_requesterMissing() {
         TicketRequestDto request = new TicketRequestDto("Login broken", "desc",
-                TicketStatus.NEW, TicketPriority.HIGH, "Technical");
+                TicketPriority.HIGH, "Technical");
         when(ticketMapper.requestDtoToEntity(request)).thenReturn(ticket);
         when(userRepository.findById(userId)).thenReturn(Optional.empty());
 
@@ -151,7 +151,7 @@ class TicketServiceImplTest {
     @DisplayName("updateTicket applies the changes and saves")
     void updateTicket_updates() {
         TicketUpdateDto update = new TicketUpdateDto("New title", "new desc",
-                TicketStatus.IN_PROGRESS, TicketPriority.LOW, "Billing");
+                TicketPriority.LOW, "Billing");
         when(ticketRepository.findById(ticketId)).thenReturn(Optional.of(ticket));
         when(ticketRepository.saveAndFlush(ticket)).thenReturn(ticket);
         when(ticketMapper.entityToResponseDto(ticket)).thenReturn(ticketDto);

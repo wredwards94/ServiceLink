@@ -2,9 +2,11 @@ package com.wesleyedwards.ServiceLink.service.serviceimpl;
 
 import com.wesleyedwards.ServiceLink.dtos.TicketRequestDto;
 import com.wesleyedwards.ServiceLink.dtos.TicketResponseDto;
+import com.wesleyedwards.ServiceLink.dtos.TicketStatusUpdateDto;
 import com.wesleyedwards.ServiceLink.dtos.TicketUpdateDto;
 import com.wesleyedwards.ServiceLink.entities.Ticket;
 import com.wesleyedwards.ServiceLink.entities.User;
+import com.wesleyedwards.ServiceLink.exceptions.BadRequestException;
 import com.wesleyedwards.ServiceLink.exceptions.NotFoundException;
 import com.wesleyedwards.ServiceLink.mappers.TicketMapper;
 import com.wesleyedwards.ServiceLink.repositories.TicketRepository;
@@ -108,6 +110,15 @@ public class TicketServiceImpl implements TicketService {
         User foundUser = checkUserExists(userId);
 
         return ticketMapper.entitiesToResponseDtos(ticketRepository.findAllByAssignedToUser(userId));
+    }
+
+    @Override
+    public TicketResponseDto updateTicketStatus(Long id, TicketStatus status) {
+        Ticket foundTicket = checkTicketExists(id);
+        if (foundTicket.getStatus().canTransitionTo(status)) throw new BadRequestException("Cannot transition from " + foundTicket.getStatus() + " to " + status);
+        foundTicket.setStatus(status);
+
+        return ticketMapper.entityToResponseDto(ticketRepository.saveAndFlush(foundTicket));
     }
 
     private Ticket checkTicketExists(Long id) {

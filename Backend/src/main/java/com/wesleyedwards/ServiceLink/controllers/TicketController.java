@@ -103,4 +103,9 @@ public class TicketController {
     public ResponseEntity<List<TicketResponseDto>> getTicketsAssignedToUser(@PathVariable UUID userId) {
         return ResponseEntity.ok(ticketService.getTicketsAssignedToUser(userId));
     }
+
+    @PatchMapping("/{id}/status")
+    public ResponseEntity<TicketResponseDto> updateTicketStatus(@PathVariable Long id, TicketStatus status) {
+        return ResponseEntity.ok(ticketService.updateTicketStatus(id, status));
+    }
 }
