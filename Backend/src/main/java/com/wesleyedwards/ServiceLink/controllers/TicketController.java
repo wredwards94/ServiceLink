@@ -30,8 +30,8 @@ public class TicketController {
     private final TicketService ticketService;
 
     @GetMapping
-    public ResponseEntity<List<TicketResponseDto>> getAllTickets() {
-        return ResponseEntity.ok(ticketService.getAllTickets());
+    public ResponseEntity<List<TicketResponseDto>> getAllTickets(@AuthenticationPrincipal UserPrincipal user) {
+        return ResponseEntity.ok(ticketService.getAllTickets(user));
     }
 
 
@@ -43,8 +43,9 @@ public class TicketController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<TicketResponseDto> getTicketById(@PathVariable Long id) {
-        return ResponseEntity.ok(ticketService.getTicketById(id));
+    public ResponseEntity<TicketResponseDto> getTicketById(@PathVariable Long id,
+                                                           @AuthenticationPrincipal UserPrincipal user) {
+        return ResponseEntity.ok(ticketService.getTicketById(id, user));
     }
 
     @DeleteMapping("/{id}")
@@ -96,13 +97,15 @@ public class TicketController {
     }
 
     @GetMapping("/requester/{requesterId}")
-    public ResponseEntity<List<TicketResponseDto>> getTicketsByRequester(@PathVariable UUID requesterId) {
-        return ResponseEntity.ok(ticketService.getTicketsByRequester(requesterId));
+    public ResponseEntity<List<TicketResponseDto>> getTicketsByRequester(@PathVariable UUID requesterId,
+                                                                         @AuthenticationPrincipal UserPrincipal user) {
+        return ResponseEntity.ok(ticketService.getTicketsByRequester(requesterId, user));
     }
 
     @GetMapping("/assigned/{userId}")
-    public ResponseEntity<List<TicketResponseDto>> getTicketsAssignedToUser(@PathVariable UUID userId) {
-        return ResponseEntity.ok(ticketService.getTicketsAssignedToUser(userId));
+    public ResponseEntity<List<TicketResponseDto>> getTicketsAssignedToUser(@PathVariable UUID userId,
+                                                                            @AuthenticationPrincipal UserPrincipal user) {
+        return ResponseEntity.ok(ticketService.getTicketsAssignedToUser(userId, user));
     }
 
     @PatchMapping("/{id}/status")

@@ -1,14 +1,17 @@
 package com.wesleyedwards.ServiceLink.service.serviceimpl;
 
+import com.wesleyedwards.ServiceLink.config.UserPrincipal;
 import com.wesleyedwards.ServiceLink.dtos.TicketRequestDto;
 import com.wesleyedwards.ServiceLink.dtos.TicketResponseDto;
 import com.wesleyedwards.ServiceLink.dtos.TicketStatusUpdateDto;
 import com.wesleyedwards.ServiceLink.dtos.TicketUpdateDto;
 import com.wesleyedwards.ServiceLink.entities.Ticket;
 import com.wesleyedwards.ServiceLink.entities.User;
+import com.wesleyedwards.ServiceLink.enums.Role;
 import com.wesleyedwards.ServiceLink.enums.TicketPriority;
 import com.wesleyedwards.ServiceLink.enums.TicketStatus;
 import com.wesleyedwards.ServiceLink.exceptions.BadRequestException;
+import com.wesleyedwards.ServiceLink.exceptions.ForbiddenException;
 import com.wesleyedwards.ServiceLink.exceptions.NotFoundException;
 import com.wesleyedwards.ServiceLink.mappers.TicketMapper;
 import com.wesleyedwards.ServiceLink.repositories.TicketRepository;
@@ -71,15 +74,34 @@ class TicketServiceImplTest {
                 null, null, null, null, List.of());
     }
 
+    private UserPrincipal principal(UUID id, Role role) {
+        User u = new User();
+        u.setUserId(id);
+        u.setRole(role);
+        return new UserPrincipal(u);
+    }
+
     @Test
-    @DisplayName("getAllTickets maps every ticket from the repository")
-    void getAllTickets_delegates() {
+    @DisplayName("getAllTickets returns every ticket for staff")
+    void getAllTickets_staffSeesAll() {
         List<Ticket> tickets = List.of(ticket);
         List<TicketResponseDto> dtos = List.of(ticketDto);
         when(ticketRepository.findAll()).thenReturn(tickets);
         when(ticketMapper.entitiesToResponseDtos(tickets)).thenReturn(dtos);
 
-        assertSame(dtos, ticketService.getAllTickets());
+        assertSame(dtos, ticketService.getAllTickets(principal(userId, Role.ADMIN)));
+    }
+
+    @Test
+    @DisplayName("getAllTickets returns only the caller's tickets for a USER")
+    void getAllTickets_userSeesOwn() {
+        List<Ticket> tickets = List.of(ticket);
+        List<TicketResponseDto> dtos = List.of(ticketDto);
+        when(ticketRepository.findAllByRequester(userId)).thenReturn(tickets);
+        when(ticketMapper.entitiesToResponseDtos(tickets)).thenReturn(dtos);
+
+        assertSame(dtos, ticketService.getAllTickets(principal(userId, Role.USER)));
+        verify(ticketRepository, never()).findAll();
     }
 
     @Test
@@ -114,12 +136,37 @@ class TicketServiceImplTest {
     }
 
     @Test
-    @DisplayName("getTicketById returns the mapped ticket when found")
-    void getTicketById_found() {
+    @DisplayName("getTicketById returns the ticket for staff")
+    void getTicketById_staffSees() {
         when(ticketRepository.findById(ticketId)).thenReturn(Optional.of(ticket));
         when(ticketMapper.entityToResponseDto(ticket)).thenReturn(ticketDto);
 
-        assertSame(ticketDto, ticketService.getTicketById(ticketId));
+        assertSame(ticketDto, ticketService.getTicketById(ticketId, principal(userId, Role.AGENT)));
+    }
+
+    @Test
+    @DisplayName("getTicketById returns the ticket for its requester")
+    void getTicketById_ownerSees() {
+        User requester = new User();
+        requester.setUserId(userId);
+        ticket.setRequester(requester);
+        when(ticketRepository.findById(ticketId)).thenReturn(Optional.of(ticket));
+        when(ticketMapper.entityToResponseDto(ticket)).thenReturn(ticketDto);
+
+        assertSame(ticketDto, ticketService.getTicketById(ticketId, principal(userId, Role.USER)));
+    }
+
+    @Test
+    @DisplayName("getTicketById forbids a USER who is not the requester")
+    void getTicketById_nonOwnerForbidden() {
+        User requester = new User();
+        requester.setUserId(UUID.randomUUID()); // someone else
+        ticket.setRequester(requester);
+        when(ticketRepository.findById(ticketId)).thenReturn(Optional.of(ticket));
+
+        assertThrows(ForbiddenException.class,
+                () -> ticketService.getTicketById(ticketId, principal(userId, Role.USER)));
+        verify(ticketMapper, never()).entityToResponseDto(any(Ticket.class));
     }
 
     @Test
@@ -127,7 +174,8 @@ class TicketServiceImplTest {
     void getTicketById_missing() {
         when(ticketRepository.findById(ticketId)).thenReturn(Optional.empty());
 
-        assertThrows(NotFoundException.class, () -> ticketService.getTicketById(ticketId));
+        assertThrows(NotFoundException.class,
+                () -> ticketService.getTicketById(ticketId, principal(userId, Role.ADMIN)));
     }
 
     @Test
@@ -277,7 +325,17 @@ class TicketServiceImplTest {
         when(ticketRepository.findAllByRequester(userId)).thenReturn(tickets);
         when(ticketMapper.entitiesToResponseDtos(tickets)).thenReturn(dtos);
 
-        assertSame(dtos, ticketService.getTicketsByRequester(userId));
+        assertSame(dtos, ticketService.getTicketsByRequester(userId, principal(userId, Role.USER)));
+    }
+
+    @Test
+    @DisplayName("getTicketsByRequester forbids a USER querying another user's tickets")
+    void getTicketsByRequester_otherUserForbidden() {
+        UUID otherId = UUID.randomUUID();
+
+        assertThrows(ForbiddenException.class,
+                () -> ticketService.getTicketsByRequester(otherId, principal(userId, Role.USER)));
+        verify(userRepository, never()).findById(any());
     }
 
     @Test
@@ -285,6 +343,7 @@ class TicketServiceImplTest {
     void getTicketsAssignedToUser_userMissing() {
         when(userRepository.findById(userId)).thenReturn(Optional.empty());
 
-        assertThrows(NotFoundException.class, () -> ticketService.getTicketsAssignedToUser(userId));
+        assertThrows(NotFoundException.class,
+                () -> ticketService.getTicketsAssignedToUser(userId, principal(userId, Role.ADMIN)));
     }
 }

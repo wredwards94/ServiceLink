@@ -1,5 +1,6 @@
 package com.wesleyedwards.ServiceLink.service.serviceimpl;
 
+import com.wesleyedwards.ServiceLink.config.UserPrincipal;
 import com.wesleyedwards.ServiceLink.dtos.TicketRequestDto;
 import com.wesleyedwards.ServiceLink.dtos.TicketResponseDto;
 import com.wesleyedwards.ServiceLink.dtos.TicketStatusUpdateDto;
@@ -7,11 +8,13 @@ import com.wesleyedwards.ServiceLink.dtos.TicketUpdateDto;
 import com.wesleyedwards.ServiceLink.entities.Ticket;
 import com.wesleyedwards.ServiceLink.entities.User;
 import com.wesleyedwards.ServiceLink.exceptions.BadRequestException;
+import com.wesleyedwards.ServiceLink.exceptions.ForbiddenException;
 import com.wesleyedwards.ServiceLink.exceptions.NotFoundException;
 import com.wesleyedwards.ServiceLink.mappers.TicketMapper;
 import com.wesleyedwards.ServiceLink.repositories.TicketRepository;
 import com.wesleyedwards.ServiceLink.repositories.UserRepository;
 import com.wesleyedwards.ServiceLink.service.TicketService;
+import com.wesleyedwards.ServiceLink.enums.Role;
 import com.wesleyedwards.ServiceLink.enums.TicketPriority;
 import com.wesleyedwards.ServiceLink.enums.TicketStatus;
 import jakarta.transaction.Transactional;
@@ -32,8 +35,12 @@ public class TicketServiceImpl implements TicketService {
     private final TicketMapper ticketMapper;
 
     @Override
-    public List<TicketResponseDto> getAllTickets() {
-        return ticketMapper.entitiesToResponseDtos(ticketRepository.findAll());
+    public List<TicketResponseDto> getAllTickets(UserPrincipal actor) {
+        // Staff (ADMIN/AGENT) see every ticket; a plain USER sees only their own.
+        List<Ticket> tickets = isStaff(actor)
+                ? ticketRepository.findAll()
+                : ticketRepository.findAllByRequester(actor.getUserId());
+        return ticketMapper.entitiesToResponseDtos(tickets);
     }
 
     @Override
@@ -47,8 +54,10 @@ public class TicketServiceImpl implements TicketService {
     }
 
     @Override
-    public TicketResponseDto getTicketById(Long id) {
-        return ticketMapper.entityToResponseDto(checkTicketExists(id));
+    public TicketResponseDto getTicketById(Long id, UserPrincipal actor) {
+        Ticket ticket = checkTicketExists(id);
+        assertCanView(actor, ticket);
+        return ticketMapper.entityToResponseDto(ticket);
     }
 
     @Override
@@ -100,15 +109,17 @@ public class TicketServiceImpl implements TicketService {
     }
 
     @Override
-    public List<TicketResponseDto> getTicketsByRequester(UUID requesterId) {
-        User foundUser = checkUserExists(requesterId);
+    public List<TicketResponseDto> getTicketsByRequester(UUID requesterId, UserPrincipal actor) {
+        // A USER may only query their own tickets; staff may query anyone's.
+        assertSelfOrStaff(actor, requesterId);
+        checkUserExists(requesterId);
         return ticketMapper.entitiesToResponseDtos(ticketRepository.findAllByRequester(requesterId));
     }
 
     @Override
-    public List<TicketResponseDto> getTicketsAssignedToUser(UUID userId) {
-        User foundUser = checkUserExists(userId);
-
+    public List<TicketResponseDto> getTicketsAssignedToUser(UUID userId, UserPrincipal actor) {
+        assertSelfOrStaff(actor, userId);
+        checkUserExists(userId);
         return ticketMapper.entitiesToResponseDtos(ticketRepository.findAllByAssignedToUser(userId));
     }
 
@@ -120,6 +131,27 @@ public class TicketServiceImpl implements TicketService {
         foundTicket.setStatus(status.ticketStatus());
 
         return ticketMapper.entityToResponseDto(ticketRepository.saveAndFlush(foundTicket));
+    }
+
+    private boolean isStaff(UserPrincipal actor) {
+        return actor.getRole() == Role.ADMIN || actor.getRole() == Role.AGENT;
+    }
+
+    // A USER may only view a ticket they requested; staff may view any ticket.
+    private void assertCanView(UserPrincipal actor, Ticket ticket) {
+        if (isStaff(actor)) return;
+        boolean isRequester = ticket.getRequester() != null
+                && ticket.getRequester().getUserId().equals(actor.getUserId());
+        if (!isRequester) {
+            throw new ForbiddenException("You are not allowed to view this ticket");
+        }
+    }
+
+    // A USER may only act on their own id; staff may act on anyone's.
+    private void assertSelfOrStaff(UserPrincipal actor, UUID targetUserId) {
+        if (!isStaff(actor) && !targetUserId.equals(actor.getUserId())) {
+            throw new ForbiddenException("You are not allowed to view these tickets");
+        }
     }
 
     private Ticket checkTicketExists(Long id) {

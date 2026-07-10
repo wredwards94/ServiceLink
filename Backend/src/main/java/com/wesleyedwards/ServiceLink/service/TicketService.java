@@ -1,5 +1,6 @@
 package com.wesleyedwards.ServiceLink.service;
 
+import com.wesleyedwards.ServiceLink.config.UserPrincipal;
 import com.wesleyedwards.ServiceLink.dtos.TicketRequestDto;
 import com.wesleyedwards.ServiceLink.dtos.TicketResponseDto;
 import com.wesleyedwards.ServiceLink.dtos.TicketStatusUpdateDto;
@@ -14,10 +15,10 @@ import java.util.UUID;
 
 public interface TicketService {
 
-    List<TicketResponseDto> getAllTickets();
+    List<TicketResponseDto> getAllTickets(UserPrincipal actor);
     TicketResponseDto createTicket(TicketRequestDto createdTicket, UUID requesterId);
 
-    TicketResponseDto getTicketById(Long id);
+    TicketResponseDto getTicketById(Long id, UserPrincipal actor);
 
     void deleteTicketById(Long id);
 
@@ -33,9 +34,9 @@ public interface TicketService {
 
     TicketResponseDto assignTicketToUser(Long id, UUID userId);
 
-    List<TicketResponseDto> getTicketsByRequester(UUID requesterId);
+    List<TicketResponseDto> getTicketsByRequester(UUID requesterId, UserPrincipal actor);
 
-    List<TicketResponseDto> getTicketsAssignedToUser(UUID userId);
+    List<TicketResponseDto> getTicketsAssignedToUser(UUID userId, UserPrincipal actor);
 
     TicketResponseDto updateTicketStatus(Long id, TicketStatusUpdateDto status);
 

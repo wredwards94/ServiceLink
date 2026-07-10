@@ -2,6 +2,7 @@ package com.wesleyedwards.ServiceLink.controllers.advice;
 
 import com.wesleyedwards.ServiceLink.dtos.ErrorDto;
 import com.wesleyedwards.ServiceLink.exceptions.BadRequestException;
+import com.wesleyedwards.ServiceLink.exceptions.ForbiddenException;
 import com.wesleyedwards.ServiceLink.exceptions.NotAuthorizedException;
 import com.wesleyedwards.ServiceLink.exceptions.NotFoundException;
 import org.springframework.http.HttpStatus;
@@ -35,6 +36,12 @@ public class ServiceLinkControllerAdvice {
     @ExceptionHandler(NotFoundException.class)
     public ErrorDto handleNotFoundException(NotFoundException notFound) {
         return new ErrorDto(notFound.getMessage());
+    }
+
+    @ResponseStatus(HttpStatus.FORBIDDEN)
+    @ExceptionHandler(ForbiddenException.class)
+    public ErrorDto handleForbiddenException(ForbiddenException forbidden) {
+        return new ErrorDto(forbidden.getMessage());
     }
 
     @ResponseStatus(HttpStatus.BAD_REQUEST)

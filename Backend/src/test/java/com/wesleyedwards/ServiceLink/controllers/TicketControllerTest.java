@@ -67,7 +67,7 @@ class TicketControllerTest {
     @Test
     @DisplayName("GET /api/tickets returns 200 with the ticket list")
     void getAllTickets_returns200() throws Exception {
-        when(ticketService.getAllTickets()).thenReturn(List.of(sampleTicket(1L)));
+        when(ticketService.getAllTickets(any())).thenReturn(List.of(sampleTicket(1L)));
 
         mockMvc.perform(get("/api/tickets"))
                 .andExpect(status().isOk())
@@ -110,19 +110,19 @@ class TicketControllerTest {
     @Test
     @DisplayName("GET /api/tickets/{id} returns 200")
     void getTicketById_returns200() throws Exception {
-        when(ticketService.getTicketById(5L)).thenReturn(sampleTicket(5L));
+        when(ticketService.getTicketById(eq(5L), any())).thenReturn(sampleTicket(5L));
 
         mockMvc.perform(get("/api/tickets/{id}", 5L))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(5));
 
-        verify(ticketService).getTicketById(5L);
+        verify(ticketService).getTicketById(eq(5L), any());
     }
 
     @Test
     @DisplayName("GET /api/tickets/{id} returns 404 when the ticket is missing")
     void getTicketById_notFound_returns404() throws Exception {
-        when(ticketService.getTicketById(99L))
+        when(ticketService.getTicketById(eq(99L), any()))
                 .thenThrow(new NotFoundException("Ticket 99 not found"));
 
         mockMvc.perform(get("/api/tickets/{id}", 99L))
@@ -226,11 +226,11 @@ class TicketControllerTest {
     @DisplayName("GET /api/tickets/requester/{requesterId} returns 200")
     void getByRequester_returns200() throws Exception {
         UUID requesterId = UUID.randomUUID();
-        when(ticketService.getTicketsByRequester(requesterId)).thenReturn(List.of(sampleTicket(1L)));
+        when(ticketService.getTicketsByRequester(eq(requesterId), any())).thenReturn(List.of(sampleTicket(1L)));
 
         mockMvc.perform(get("/api/tickets/requester/{requesterId}", requesterId))
                 .andExpect(status().isOk());
 
-        verify(ticketService).getTicketsByRequester(requesterId);
+        verify(ticketService).getTicketsByRequester(eq(requesterId), any());
     }
 }
