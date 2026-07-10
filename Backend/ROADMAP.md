@@ -46,8 +46,8 @@ Along the way, `isDisabled` was repurposed into a distinct **suspend/ban** featu
 
 The features that make the system genuinely useful for day-to-day IT support.
 
-**Richer status lifecycle.**
-`TicketStatus` is only `NEW, IN_PROGRESS, CLOSED`. Add `RESOLVED`, `ON_HOLD`, and `REOPENED`, plus a reopen endpoint, to support resolve-then-confirm workflows.
+**Richer status lifecycle.** ✅ *Done.*
+Expanded `TicketStatus` to `NEW, IN_PROGRESS, ON_HOLD, RESOLVED, REOPENED, CLOSED`, with a `canTransitionTo(...)` state-machine on the enum defining the allowed moves (resolve-then-confirm, reopen from CLOSED/RESOLVED, no self-transitions). New tickets default to `NEW` and `status` was removed from the create/update DTOs, so status changes only through a dedicated, validated path: `PATCH /api/tickets/{id}/status` (with `TicketStatusUpdateDto`) rejects illegal transitions with a 400. Reopen is just a transition to `REOPENED` via that endpoint. Covered by enum transition tests and service tests (valid + illegal). *(Reopen-by-requester stays agent-gated for now — revisit with ownership-based authorization.)*
 
 **Ticket history / audit trail.**
 Add a timeline entity recording status changes, reassignments, and field edits (who, what, when). Nothing captures this today, yet `createdAt` / `updatedAt` show the data model is close.
