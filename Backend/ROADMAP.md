@@ -58,10 +58,10 @@ File and screenshot uploads on tickets and comments — close to essential for I
 **Internal vs. public comments.**
 Add a visibility flag so agents can leave notes the requester cannot see. (The `Comment` entity is the natural home.)
 
-**Ownership-based authorization.** 🟡 *In progress (tickets done).*
+**Ownership-based authorization.** 🟡 *In progress (tickets + profiles done; comments remaining).*
 Security was role-based only. Layering in ownership checks where "who owns it" matters — method-level logic (service-layer guards throwing `ForbiddenException` → 403), not just `requestMatchers` rules:
 - *Tickets:* ✅ Read ownership enforced — a USER sees only tickets they requested (`getAllTickets` filters; `getTicketById`/`getTicketsByRequester`/`getTicketsAssignedToUser` guard via `assertCanView`/`assertSelfOrStaff`), staff see all, 403 otherwise. Modify (edit/delete/status/assign) intentionally stays admin + any agent, already enforced by the URL rules.
-- *User profiles:* ⬜ `GET`/`PATCH /api/users/{userId}` still fall to the generic `authenticated()` rule, so any logged-in user can view/edit anyone's profile by ID. A user should only edit their own; ADMIN anyone.
+- *User profiles:* ✅ Edit ownership enforced — `updateUser` guards via `assertSelfOrAdmin` (a USER edits only their own profile; ADMIN edits anyone), 403 otherwise. Viewing (`getUser`) intentionally left open to any authenticated user (name/email only). Covered by self/other/admin service tests.
 - *Comments:* ⬜ authors can't edit/delete their own comment yet (ADMIN/AGENT only) — decide whether authors should manage their own.
 
 Depends on Phase 1 (identity from JWT), which is now in place.
