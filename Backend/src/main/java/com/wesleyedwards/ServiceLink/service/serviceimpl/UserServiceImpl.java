@@ -7,6 +7,7 @@ import com.wesleyedwards.ServiceLink.entities.PasswordResetToken;
 import com.wesleyedwards.ServiceLink.entities.User;
 import com.wesleyedwards.ServiceLink.enums.Role;
 import com.wesleyedwards.ServiceLink.exceptions.BadRequestException;
+import com.wesleyedwards.ServiceLink.exceptions.ForbiddenException;
 import com.wesleyedwards.ServiceLink.exceptions.NotFoundException;
 import com.wesleyedwards.ServiceLink.mappers.ProfileMapper;
 import com.wesleyedwards.ServiceLink.mappers.UserMapper;
@@ -58,19 +59,6 @@ public class UserServiceImpl implements UserService {
         String token = jwtUtil.generateToken(principal.getUsername(), principal.getRole());
         return new UserIdResponseDto(principal.getUserId(), token, principal.getRole());
     }
-//    public UserIdResponseDto login(CredentialsRequestDto credentials) {
-//        System.out.println(credentials);
-//        User foundUser = checkUserExistsByUsername(credentials.username());
-//        if(!passwordEncoder.matches(credentials.password(), foundUser.getCredentials().getPassword()))
-//            throw new BadRequestException("Invalid password");
-//
-//        String token = jwtUtil.generateToken(
-//                foundUser.getCredentials().getUsername(),
-//                foundUser.getRole()
-//        );
-//
-//        return new UserIdResponseDto(foundUser.getUserId(), token, foundUser.getRole());
-//    }
 
     @Override
     public List<UserResponseDto> getAllUsers() {
@@ -83,7 +71,8 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public UserResponseDto updateUser(UUID userId, ProfileUpdateDto updateProf) {
+    public UserResponseDto updateUser(UUID userId, ProfileUpdateDto updateProf, UserPrincipal actor) {
+        assertSelfOrAdmin(actor, userId);
         User foundUser = checkUserExists(userId);
 
         profileMapper.updateProfileFromDto(updateProf, foundUser.getProfile());
@@ -101,7 +90,7 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public void deleteuser(UUID userId) {
+    public void deleteUser(UUID userId) {
         User foundUser = checkUserExists(userId);
         userRepository.delete(foundUser);
     }
@@ -164,5 +153,11 @@ public class UserServiceImpl implements UserService {
 
     private void setEncodedPassword(User user, String password) {
         user.getCredentials().setPassword(passwordEncoder.encode(password));
+    }
+
+    private void assertSelfOrAdmin(UserPrincipal actor, UUID targetId) {
+        if (actor.getRole() != Role.ADMIN && !targetId.equals(actor.getUserId())) {
+            throw new ForbiddenException("You are not allowed to modify this profile");
+        }
     }
 }

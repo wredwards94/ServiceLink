@@ -15,6 +15,7 @@ import com.wesleyedwards.ServiceLink.entities.Profile;
 import com.wesleyedwards.ServiceLink.entities.User;
 import com.wesleyedwards.ServiceLink.enums.Role;
 import com.wesleyedwards.ServiceLink.exceptions.BadRequestException;
+import com.wesleyedwards.ServiceLink.exceptions.ForbiddenException;
 import com.wesleyedwards.ServiceLink.exceptions.NotFoundException;
 import com.wesleyedwards.ServiceLink.mappers.ProfileMapper;
 import com.wesleyedwards.ServiceLink.mappers.UserMapper;
@@ -171,8 +172,15 @@ class UserServiceImplTest {
         assertThrows(NotFoundException.class, () -> userService.getUser(userId));
     }
 
+    private UserPrincipal principal(UUID id, Role role) {
+        User u = new User();
+        u.setUserId(id);
+        u.setRole(role);
+        return new UserPrincipal(u);
+    }
+
     @Test
-    @DisplayName("updateUser applies the profile changes and saves")
+    @DisplayName("updateUser applies the profile changes and saves for the profile owner")
     void updateUser_updatesProfile() {
         ProfileUpdateDto update = new ProfileUpdateDto("Jane", "Doe", "jane.doe@example.com");
         UserResponseDto expected = new UserResponseDto(userId, null, List.of(), List.of());
@@ -181,8 +189,34 @@ class UserServiceImplTest {
         when(userRepository.save(user)).thenReturn(user);
         when(userMapper.entityToResponseDto(user)).thenReturn(expected);
 
-        assertSame(expected, userService.updateUser(userId, update));
+        assertSame(expected, userService.updateUser(userId, update, principal(userId, Role.USER)));
         verify(profileMapper).updateProfileFromDto(update, user.getProfile());
+        verify(userRepository).save(user);
+    }
+
+    @Test
+    @DisplayName("updateUser forbids a USER editing another user's profile")
+    void updateUser_otherUserForbidden() {
+        ProfileUpdateDto update = new ProfileUpdateDto("Jane", "Doe", "jane.doe@example.com");
+        UserPrincipal actor = principal(UUID.randomUUID(), Role.USER); // not the target
+
+        assertThrows(ForbiddenException.class,
+                () -> userService.updateUser(userId, update, actor));
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("updateUser lets an ADMIN edit anyone's profile")
+    void updateUser_adminEditsAnyone() {
+        ProfileUpdateDto update = new ProfileUpdateDto("Jane", "Doe", "jane.doe@example.com");
+        UserResponseDto expected = new UserResponseDto(userId, null, List.of(), List.of());
+        UserPrincipal admin = principal(UUID.randomUUID(), Role.ADMIN); // different user, but admin
+
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+        when(userRepository.save(user)).thenReturn(user);
+        when(userMapper.entityToResponseDto(user)).thenReturn(expected);
+
+        assertSame(expected, userService.updateUser(userId, update, admin));
         verify(userRepository).save(user);
     }
 
@@ -191,7 +225,7 @@ class UserServiceImplTest {
     void deleteUser_softDeletes() {
         when(userRepository.findById(userId)).thenReturn(Optional.of(user));
 
-        userService.deleteuser(userId);
+        userService.deleteUser(userId);
 
         // @SoftDelete turns this delete() into an UPDATE ... SET deleted = true.
         verify(userRepository).delete(user);
@@ -202,7 +236,7 @@ class UserServiceImplTest {
     void deleteUser_missing() {
         when(userRepository.findById(userId)).thenReturn(Optional.empty());
 
-        assertThrows(NotFoundException.class, () -> userService.deleteuser(userId));
+        assertThrows(NotFoundException.class, () -> userService.deleteUser(userId));
         verify(userRepository, never()).saveAndFlush(any());
     }
 

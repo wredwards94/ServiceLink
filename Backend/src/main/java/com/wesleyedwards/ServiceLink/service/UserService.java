@@ -1,5 +1,6 @@
 package com.wesleyedwards.ServiceLink.service;
 
+import com.wesleyedwards.ServiceLink.config.UserPrincipal;
 import com.wesleyedwards.ServiceLink.dtos.*;
 import com.wesleyedwards.ServiceLink.enums.Role;
 import jakarta.validation.Valid;
@@ -16,11 +17,11 @@ public interface UserService {
 
     UserResponseDto getUser(UUID userId);
 
-    UserResponseDto updateUser(UUID userId, ProfileUpdateDto updateProf);
+    UserResponseDto updateUser(UUID userId, ProfileUpdateDto updateProf, UserPrincipal actor);
 
     UserResponseDto updateUserRole(UUID userId, Role role);
 
-    void deleteuser(UUID userId);
+    void deleteUser(UUID userId);
 
     void changePassword(UUID userId, @Valid ChangePasswordRequestDto dto);
 

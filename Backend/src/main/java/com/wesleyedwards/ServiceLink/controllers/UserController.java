@@ -42,13 +42,15 @@ public class UserController {
     }
 
     @PatchMapping("/profile/{userId}")
-    public ResponseEntity<UserResponseDto> updateUser(@PathVariable UUID userId, @Valid @RequestBody ProfileUpdateDto updateProf) {
-        return ResponseEntity.ok(userService.updateUser(userId, updateProf));
+    public ResponseEntity<UserResponseDto> updateUser(@PathVariable UUID userId,
+                                                      @Valid @RequestBody ProfileUpdateDto updateProf,
+                                                      @AuthenticationPrincipal UserPrincipal actor) {
+        return ResponseEntity.ok(userService.updateUser(userId, updateProf, actor));
     }
 
     @DeleteMapping("/{userId}")
     public ResponseEntity<UserResponseDto> deleteUser(@PathVariable UUID userId) {
-        userService.deleteuser(userId);
+        userService.deleteUser(userId);
         return ResponseEntity.noContent().build();
     }
 

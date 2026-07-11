@@ -162,7 +162,7 @@ class UserControllerTest {
     @DisplayName("PATCH /api/users/profile/{id} returns 200 and forwards the profile changes")
     void updateUser_returns200() throws Exception {
         UUID id = UUID.randomUUID();
-        when(userService.updateUser(eq(id), any(ProfileUpdateDto.class))).thenReturn(sampleUser(id));
+        when(userService.updateUser(eq(id), any(ProfileUpdateDto.class), any())).thenReturn(sampleUser(id));
 
         String body = "{\"firstName\": \"Jane\", \"lastName\": \"Doe\", \"email\": \"jane.doe@example.com\"}";
 
@@ -171,7 +171,7 @@ class UserControllerTest {
                         .content(body))
                 .andExpect(status().isOk());
 
-        verify(userService).updateUser(eq(id), any(ProfileUpdateDto.class));
+        verify(userService).updateUser(eq(id), any(ProfileUpdateDto.class), any());
     }
 
     @Test
@@ -182,6 +182,6 @@ class UserControllerTest {
         mockMvc.perform(delete("/api/users/{userId}", id))
                 .andExpect(status().isNoContent());
 
-        verify(userService).deleteuser(id);
+        verify(userService).deleteUser(id);
     }
 }
