@@ -1,5 +1,6 @@
 package com.wesleyedwards.ServiceLink.service;
 
+import com.wesleyedwards.ServiceLink.config.UserPrincipal;
 import com.wesleyedwards.ServiceLink.dtos.CommentRequestDto;
 import com.wesleyedwards.ServiceLink.dtos.CommentResponseDto;
 
@@ -13,5 +14,5 @@ public interface CommentService {
 
     void deleteComment(Long commentId);
 
-    CommentResponseDto updateComment(Long commentId, CommentRequestDto updatedComment);
+    CommentResponseDto updateComment(Long commentId, CommentRequestDto updatedComment, UserPrincipal actor);
 }

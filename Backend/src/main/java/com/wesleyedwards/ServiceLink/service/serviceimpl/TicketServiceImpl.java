@@ -139,7 +139,7 @@ public class TicketServiceImpl implements TicketService {
 
     // A USER may only view a ticket they requested; staff may view any ticket.
     private void assertCanView(UserPrincipal actor, Ticket ticket) {
-        if (isStaff(actor)) return;
+        if (actor.isStaff()) return;
         boolean isRequester = ticket.getRequester() != null
                 && ticket.getRequester().getUserId().equals(actor.getUserId());
         if (!isRequester) {
@@ -149,7 +149,7 @@ public class TicketServiceImpl implements TicketService {
 
     // A USER may only act on their own id; staff may act on anyone's.
     private void assertSelfOrStaff(UserPrincipal actor, UUID targetUserId) {
-        if (!isStaff(actor) && !targetUserId.equals(actor.getUserId())) {
+        if (!actor.isStaff() && !targetUserId.equals(actor.getUserId())) {
             throw new ForbiddenException("You are not allowed to view these tickets");
         }
     }

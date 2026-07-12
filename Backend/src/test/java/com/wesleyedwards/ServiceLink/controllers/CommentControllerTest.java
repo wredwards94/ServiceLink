@@ -142,7 +142,7 @@ class CommentControllerTest {
     @DisplayName("PUT /api/comments/{commentId} returns 200 and forwards the update")
     void updateComment_returns200() throws Exception {
         UUID authorId = UUID.randomUUID();
-        when(commentService.updateComment(eq(7L), any(CommentRequestDto.class)))
+        when(commentService.updateComment(eq(7L), any(CommentRequestDto.class), any()))
                 .thenReturn(sampleComment(7L, 3L, authorId));
 
         String body = "{\"content\": \"Updated content\"}";
@@ -152,6 +152,6 @@ class CommentControllerTest {
                         .content(body))
                 .andExpect(status().isOk());
 
-        verify(commentService).updateComment(eq(7L), any(CommentRequestDto.class));
+        verify(commentService).updateComment(eq(7L), any(CommentRequestDto.class), any());
     }
 }

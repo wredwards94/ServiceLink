@@ -41,8 +41,9 @@ public class CommentController {
 
     @PutMapping("/{commentId}")
     public ResponseEntity<CommentResponseDto> updateComment(@PathVariable Long commentId,
-                                                            @Valid @RequestBody CommentRequestDto updatedComment) {
-        return ResponseEntity.ok(commentService.updateComment(commentId, updatedComment));
+                                                            @Valid @RequestBody CommentRequestDto updatedComment,
+                                                            @AuthenticationPrincipal UserPrincipal actor) {
+        return ResponseEntity.ok(commentService.updateComment(commentId, updatedComment, actor));
     }
 
 //    Add comment searching using filters and/or keywords

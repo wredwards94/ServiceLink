@@ -38,4 +38,8 @@ public class UserPrincipal implements UserDetails {
     }
 
     public Role getRole() { return user.getRole(); }
+
+    // in UserPrincipal
+    public boolean isAdmin() { return user.getRole() == Role.ADMIN; }
+    public boolean isStaff() { return user.getRole() == Role.ADMIN || user.getRole() == Role.AGENT; }
 }

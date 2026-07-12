@@ -1,10 +1,13 @@
 package com.wesleyedwards.ServiceLink.service.serviceimpl;
 
+import com.wesleyedwards.ServiceLink.config.UserPrincipal;
 import com.wesleyedwards.ServiceLink.dtos.CommentRequestDto;
 import com.wesleyedwards.ServiceLink.dtos.CommentResponseDto;
 import com.wesleyedwards.ServiceLink.entities.Comment;
 import com.wesleyedwards.ServiceLink.entities.Ticket;
 import com.wesleyedwards.ServiceLink.entities.User;
+import com.wesleyedwards.ServiceLink.enums.Role;
+import com.wesleyedwards.ServiceLink.exceptions.ForbiddenException;
 import com.wesleyedwards.ServiceLink.exceptions.NotFoundException;
 import com.wesleyedwards.ServiceLink.mappers.CommentMapper;
 import com.wesleyedwards.ServiceLink.repositories.CommentRepository;
@@ -18,6 +21,8 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -59,7 +64,16 @@ class CommentServiceImplTest {
         comment = new Comment();
         comment.setId(commentId);
         comment.setContent("Please advise");
+        comment.setAuthor(user);
+        comment.setCreatedAt(LocalDateTime.now()); // within the edit window by default
         commentDto = new CommentResponseDto(commentId, authorId, "John Doe", ticketId, "Please advise", null);
+    }
+
+    private UserPrincipal principal(UUID id, Role role) {
+        User u = new User();
+        u.setUserId(id);
+        u.setRole(role);
+        return new UserPrincipal(u);
     }
 
     @Test
@@ -143,15 +157,53 @@ class CommentServiceImplTest {
     }
 
     @Test
-    @DisplayName("updateComment applies the changes and saves")
-    void updateComment_updates() {
+    @DisplayName("updateComment lets the author edit within the window and saves")
+    void updateComment_authorWithinWindow() {
         CommentRequestDto update = new CommentRequestDto("Updated content");
         when(commentRepository.findById(commentId)).thenReturn(Optional.of(comment));
         when(commentRepository.saveAndFlush(comment)).thenReturn(comment);
         when(commentMapper.entityToResponseDto(comment)).thenReturn(commentDto);
 
-        assertSame(commentDto, commentService.updateComment(commentId, update));
+        assertSame(commentDto,
+                commentService.updateComment(commentId, update, principal(authorId, Role.USER)));
         verify(commentMapper).updateCommentFromDto(update, comment);
+        verify(commentRepository).saveAndFlush(comment);
+    }
+
+    @Test
+    @DisplayName("updateComment forbids the author once the edit window has passed")
+    void updateComment_windowExpired() {
+        comment.setCreatedAt(LocalDateTime.now().minus(Duration.ofMinutes(20)));
+        CommentRequestDto update = new CommentRequestDto("Updated content");
+        when(commentRepository.findById(commentId)).thenReturn(Optional.of(comment));
+
+        assertThrows(ForbiddenException.class,
+                () -> commentService.updateComment(commentId, update, principal(authorId, Role.USER)));
+        verify(commentRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
+    @DisplayName("updateComment forbids a USER who is not the author")
+    void updateComment_notAuthorForbidden() {
+        CommentRequestDto update = new CommentRequestDto("Updated content");
+        when(commentRepository.findById(commentId)).thenReturn(Optional.of(comment));
+
+        assertThrows(ForbiddenException.class,
+                () -> commentService.updateComment(commentId, update, principal(UUID.randomUUID(), Role.USER)));
+        verify(commentRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
+    @DisplayName("updateComment lets staff edit any comment regardless of the window")
+    void updateComment_staffBypassesWindow() {
+        comment.setCreatedAt(LocalDateTime.now().minus(Duration.ofMinutes(20)));
+        CommentRequestDto update = new CommentRequestDto("Updated content");
+        when(commentRepository.findById(commentId)).thenReturn(Optional.of(comment));
+        when(commentRepository.saveAndFlush(comment)).thenReturn(comment);
+        when(commentMapper.entityToResponseDto(comment)).thenReturn(commentDto);
+
+        assertSame(commentDto,
+                commentService.updateComment(commentId, update, principal(UUID.randomUUID(), Role.AGENT)));
         verify(commentRepository).saveAndFlush(comment);
     }
 
@@ -161,7 +213,8 @@ class CommentServiceImplTest {
         CommentRequestDto update = new CommentRequestDto("Updated content");
         when(commentRepository.findById(commentId)).thenReturn(Optional.empty());
 
-        assertThrows(NotFoundException.class, () -> commentService.updateComment(commentId, update));
+        assertThrows(NotFoundException.class,
+                () -> commentService.updateComment(commentId, update, principal(authorId, Role.USER)));
         verify(commentRepository, never()).saveAndFlush(any());
     }
 }

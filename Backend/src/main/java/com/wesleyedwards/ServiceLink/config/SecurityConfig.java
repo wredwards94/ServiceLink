@@ -46,6 +46,8 @@ public class SecurityConfig {
                         // comments — specific method rules first, broad last
                         .requestMatchers(HttpMethod.GET, "/api/comments/**").hasAnyRole("ADMIN", "AGENT", "USER")
                         .requestMatchers(HttpMethod.POST, "/api/comments/**").hasAnyRole("ADMIN", "AGENT", "USER")
+                        // USERs may PUT (edit) — the service enforces author + edit-window; DELETE stays staff-only
+                        .requestMatchers(HttpMethod.PUT, "/api/comments/**").hasAnyRole("ADMIN", "AGENT", "USER")
                         .requestMatchers("/api/comments/**").hasAnyRole("ADMIN", "AGENT")
                         // users
                         .requestMatchers(HttpMethod.GET, "/api/users").hasRole("ADMIN")
