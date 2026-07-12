@@ -2,6 +2,7 @@ package com.wesleyedwards.ServiceLink.mappers;
 
 import com.wesleyedwards.ServiceLink.dtos.TicketRequestDto;
 import com.wesleyedwards.ServiceLink.dtos.TicketResponseDto;
+import com.wesleyedwards.ServiceLink.dtos.TicketUpdateDto;
 import com.wesleyedwards.ServiceLink.entities.Ticket;
 import org.mapstruct.*;
 
@@ -23,5 +24,5 @@ public interface TicketMapper {
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     @Mapping(target = "assignedTo", ignore = true)
     @Mapping(target = "requester", ignore = true)
-    void updateTicketFromDto(TicketRequestDto dto, @MappingTarget Ticket ticket);
+    void updateTicketFromDto(TicketUpdateDto dto, @MappingTarget Ticket ticket);
 }

@@ -1,0 +1,87 @@
+<div class="p-6">
+
+  @if (isLoading) {
+    <div class="text-center text-gray-400 py-8">Loading...</div>
+  }
+
+  @if (!isLoading) {
+
+    <!-- Summary Cards -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      <div class="bg-gray-800 rounded-lg p-4">
+        <p class="text-gray-400 text-sm">Total Tickets</p>
+        <p class="text-3xl font-bold text-white mt-1">{{ totalTickets }}</p>
+      </div>
+      <div class="bg-gray-800 rounded-lg p-4">
+        <p class="text-gray-400 text-sm">Open Tickets</p>
+        <p class="text-3xl font-bold text-indigo-400 mt-1">{{ openTickets }}</p>
+      </div>
+      <div class="bg-gray-800 rounded-lg p-4">
+        <p class="text-gray-400 text-sm">In Progress</p>
+        <p class="text-3xl font-bold text-yellow-400 mt-1">{{ inProgressTickets }}</p>
+      </div>
+      <div class="bg-gray-800 rounded-lg p-4">
+        <p class="text-gray-400 text-sm">Critical</p>
+        <p class="text-3xl font-bold text-red-400 mt-1">{{ criticalTickets }}</p>
+      </div>
+    </div>
+
+    <!-- Recent Tickets -->
+    <div class="bg-gray-800 rounded-lg p-4">
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="text-lg font-semibold">Recent Tickets</h2>
+        <button (click)="router.navigate(['/tickets'])"
+                class="bg-indigo-500 hover:bg-indigo-400 text-white text-sm px-4 py-2 rounded-md">
+          View All
+        </button>
+      </div>
+
+      <table class="w-full text-sm">
+        <thead>
+        <tr class="text-gray-400 border-b border-gray-700">
+          <th class="text-left py-2">Title</th>
+          <th class="text-left py-2">Status</th>
+          <th class="text-left py-2">Priority</th>
+          <th class="text-left py-2">Category</th>
+          <th class="text-left py-2">Created</th>
+        </tr>
+        </thead>
+        <tbody>
+          @for (ticket of tickets.slice(0, 5); track ticket.id) {
+            <tr (click)="viewTicket(ticket.id)"
+                class="border-b border-gray-700 hover:bg-gray-700 cursor-pointer">
+              <td class="py-3">{{ ticket.title }}</td>
+              <td class="py-3">
+                <span [ngClass]="{
+                  'text-blue-400 bg-blue-400/10': ticket.status === 'NEW',
+                  'text-yellow-400 bg-yellow-400/10': ticket.status === 'IN_PROGRESS',
+                  'text-green-400 bg-green-400/10': ticket.status === 'CLOSED'
+                }" class="px-2 py-1 rounded-full text-xs">
+                  {{ ticket.status }}
+                </span>
+              </td>
+              <td class="py-3">
+                <span [ngClass]="{
+                  'text-gray-400 bg-gray-400/10': ticket.priority === 'LOW',
+                  'text-blue-400 bg-blue-400/10': ticket.priority === 'MEDIUM',
+                  'text-orange-400 bg-orange-400/10': ticket.priority === 'HIGH',
+                  'text-red-400 bg-red-400/10': ticket.priority === 'CRITICAL'
+                }" class="px-2 py-1 rounded-full text-xs">
+                  {{ ticket.priority }}
+                </span>
+              </td>
+              <td class="py-3 text-gray-400">{{ ticket.category }}</td>
+              <td class="py-3 text-gray-400">{{ ticket.createdAt }}</td>
+            </tr>
+          }
+
+          @if (tickets.length === 0) {
+            <tr>
+              <td colspan="5" class="py-8 text-center text-gray-400">No tickets found.</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</div>

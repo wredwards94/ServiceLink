@@ -1,0 +1,308 @@
+package com.wesleyedwards.ServiceLink.service.serviceimpl;
+
+import com.wesleyedwards.ServiceLink.config.JwtUtil;
+import com.wesleyedwards.ServiceLink.config.UserPrincipal;
+import com.wesleyedwards.ServiceLink.dtos.CredentialsRequestDto;
+import com.wesleyedwards.ServiceLink.dtos.ProfileRequestDto;
+import com.wesleyedwards.ServiceLink.dtos.ProfileUpdateDto;
+import com.wesleyedwards.ServiceLink.dtos.ResetPasswordDto;
+import com.wesleyedwards.ServiceLink.dtos.UserIdResponseDto;
+import com.wesleyedwards.ServiceLink.dtos.UserRequestDto;
+import com.wesleyedwards.ServiceLink.dtos.UserResponseDto;
+import com.wesleyedwards.ServiceLink.entities.Credentials;
+import com.wesleyedwards.ServiceLink.entities.PasswordResetToken;
+import com.wesleyedwards.ServiceLink.entities.Profile;
+import com.wesleyedwards.ServiceLink.entities.User;
+import com.wesleyedwards.ServiceLink.enums.Role;
+import com.wesleyedwards.ServiceLink.exceptions.BadRequestException;
+import com.wesleyedwards.ServiceLink.exceptions.ForbiddenException;
+import com.wesleyedwards.ServiceLink.exceptions.NotFoundException;
+import com.wesleyedwards.ServiceLink.mappers.ProfileMapper;
+import com.wesleyedwards.ServiceLink.mappers.UserMapper;
+import com.wesleyedwards.ServiceLink.repositories.PasswordResetTokenRepository;
+import com.wesleyedwards.ServiceLink.repositories.UserRepository;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.DisabledException;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.crypto.password.PasswordEncoder;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+@ExtendWith(MockitoExtension.class)
+@DisplayName("UserServiceImpl")
+class UserServiceImplTest {
+
+    @Mock private UserRepository userRepository;
+    @Mock private UserMapper userMapper;
+    @Mock private ProfileMapper profileMapper;
+    @Mock private PasswordEncoder passwordEncoder;
+    @Mock private AuthenticationManager authenticationManager;
+    @Mock private JwtUtil jwtUtil;
+    @Mock private PasswordResetTokenRepository passwordResetTokenRepository;
+
+    @InjectMocks private UserServiceImpl userService;
+
+    private User user;
+    private UUID userId;
+
+    @BeforeEach
+    void setUp() {
+        userId = UUID.randomUUID();
+        user = new User();
+        user.setUserId(userId);
+        user.setCredentials(new Credentials("jdoe", "hashed-pw"));
+        user.setProfile(new Profile("John", "Doe", "john.doe@example.com"));
+        user.setRole(Role.USER);
+    }
+
+    @Test
+    @DisplayName("createUser encodes the raw password before saving")
+    void createUser_encodesPassword() {
+        UserRequestDto request = new UserRequestDto(
+                new CredentialsRequestDto("jdoe", "raw-pw"),
+                new ProfileRequestDto("John", "Doe", "john.doe@example.com"));
+
+        User mapped = new User();
+        mapped.setCredentials(new Credentials("jdoe", "raw-pw"));
+        UserResponseDto expected = new UserResponseDto(userId, null, List.of(), List.of());
+
+        when(userMapper.requestDtoToEntity(request)).thenReturn(mapped);
+        when(passwordEncoder.encode("raw-pw")).thenReturn("hashed-pw");
+        when(userMapper.entityToResponseDto(mapped)).thenReturn(expected);
+
+        UserResponseDto result = userService.createUser(request);
+
+        assertSame(expected, result);
+        assertEquals("hashed-pw", mapped.getCredentials().getPassword());
+        verify(passwordEncoder).encode("raw-pw");
+        verify(userRepository).saveAndFlush(mapped);
+    }
+
+    @Test
+    @DisplayName("login returns a token for the authenticated principal")
+    void login_success() {
+        CredentialsRequestDto creds = new CredentialsRequestDto("jdoe", "raw-pw");
+        Authentication auth = new UsernamePasswordAuthenticationToken(
+                new UserPrincipal(user), null, List.of());
+
+        when(authenticationManager.authenticate(any())).thenReturn(auth);
+        when(jwtUtil.generateToken("jdoe", Role.USER)).thenReturn("jwt-token");
+
+        UserIdResponseDto result = userService.login(creds);
+
+        assertEquals(userId, result.userId());
+        assertEquals("jwt-token", result.token());
+        assertEquals(Role.USER, result.role());
+    }
+
+    @Test
+    @DisplayName("login propagates BadCredentialsException for invalid credentials")
+    void login_invalidCredentials() {
+        CredentialsRequestDto creds = new CredentialsRequestDto("jdoe", "wrong-pw");
+
+        when(authenticationManager.authenticate(any()))
+                .thenThrow(new BadCredentialsException("Bad credentials"));
+
+        assertThrows(BadCredentialsException.class, () -> userService.login(creds));
+        verify(jwtUtil, never()).generateToken(any(), any());
+    }
+
+    @Test
+    @DisplayName("login propagates DisabledException for a disabled account")
+    void login_disabledAccount() {
+        CredentialsRequestDto creds = new CredentialsRequestDto("jdoe", "raw-pw");
+
+        when(authenticationManager.authenticate(any()))
+                .thenThrow(new DisabledException("Account is disabled"));
+
+        assertThrows(DisabledException.class, () -> userService.login(creds));
+        verify(jwtUtil, never()).generateToken(any(), any());
+    }
+
+    @Test
+    @DisplayName("getAllUsers delegates to the repository and mapper")
+    void getAllUsers_delegates() {
+        List<User> users = List.of(user);
+        List<UserResponseDto> expected = List.of(new UserResponseDto(userId, null, List.of(), List.of()));
+
+        when(userRepository.findAll()).thenReturn(users);
+        when(userMapper.entitiesToResponseDtos(users)).thenReturn(expected);
+
+        assertSame(expected, userService.getAllUsers());
+    }
+
+    @Test
+    @DisplayName("getUser returns the mapped user when found")
+    void getUser_found() {
+        UserResponseDto expected = new UserResponseDto(userId, null, List.of(), List.of());
+
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+        when(userMapper.entityToResponseDto(user)).thenReturn(expected);
+
+        assertSame(expected, userService.getUser(userId));
+    }
+
+    @Test
+    @DisplayName("getUser throws NotFoundException when missing")
+    void getUser_missing() {
+        when(userRepository.findById(userId)).thenReturn(Optional.empty());
+
+        assertThrows(NotFoundException.class, () -> userService.getUser(userId));
+    }
+
+    private UserPrincipal principal(UUID id, Role role) {
+        User u = new User();
+        u.setUserId(id);
+        u.setRole(role);
+        return new UserPrincipal(u);
+    }
+
+    @Test
+    @DisplayName("updateUser applies the profile changes and saves for the profile owner")
+    void updateUser_updatesProfile() {
+        ProfileUpdateDto update = new ProfileUpdateDto("Jane", "Doe", "jane.doe@example.com");
+        UserResponseDto expected = new UserResponseDto(userId, null, List.of(), List.of());
+
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+        when(userRepository.save(user)).thenReturn(user);
+        when(userMapper.entityToResponseDto(user)).thenReturn(expected);
+
+        assertSame(expected, userService.updateUser(userId, update, principal(userId, Role.USER)));
+        verify(profileMapper).updateProfileFromDto(update, user.getProfile());
+        verify(userRepository).save(user);
+    }
+
+    @Test
+    @DisplayName("updateUser forbids a USER editing another user's profile")
+    void updateUser_otherUserForbidden() {
+        ProfileUpdateDto update = new ProfileUpdateDto("Jane", "Doe", "jane.doe@example.com");
+        UserPrincipal actor = principal(UUID.randomUUID(), Role.USER); // not the target
+
+        assertThrows(ForbiddenException.class,
+                () -> userService.updateUser(userId, update, actor));
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("updateUser lets an ADMIN edit anyone's profile")
+    void updateUser_adminEditsAnyone() {
+        ProfileUpdateDto update = new ProfileUpdateDto("Jane", "Doe", "jane.doe@example.com");
+        UserResponseDto expected = new UserResponseDto(userId, null, List.of(), List.of());
+        UserPrincipal admin = principal(UUID.randomUUID(), Role.ADMIN); // different user, but admin
+
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+        when(userRepository.save(user)).thenReturn(user);
+        when(userMapper.entityToResponseDto(user)).thenReturn(expected);
+
+        assertSame(expected, userService.updateUser(userId, update, admin));
+        verify(userRepository).save(user);
+    }
+
+    @Test
+    @DisplayName("deleteuser soft-deletes the user via repository delete")
+    void deleteUser_softDeletes() {
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+
+        userService.deleteUser(userId);
+
+        // @SoftDelete turns this delete() into an UPDATE ... SET deleted = true.
+        verify(userRepository).delete(user);
+    }
+
+    @Test
+    @DisplayName("deleteuser throws NotFoundException when the user is missing")
+    void deleteUser_missing() {
+        when(userRepository.findById(userId)).thenReturn(Optional.empty());
+
+        assertThrows(NotFoundException.class, () -> userService.deleteUser(userId));
+        verify(userRepository, never()).saveAndFlush(any());
+    }
+
+    private PasswordResetToken resetToken(String value, boolean used, LocalDateTime expiresAt) {
+        PasswordResetToken token = new PasswordResetToken();
+        token.setToken(value);
+        token.setUser(user);
+        token.setUsed(used);
+        token.setExpiresAt(expiresAt);
+        return token;
+    }
+
+    @Test
+    @DisplayName("resetPassword sets the new password, saves, and marks the token used")
+    void resetPassword_success() {
+        PasswordResetToken token = resetToken("tok-123", false, LocalDateTime.now().plusMinutes(10));
+        ResetPasswordDto dto = new ResetPasswordDto("tok-123", "new-strong-pw");
+
+        when(passwordResetTokenRepository.findByToken("tok-123")).thenReturn(token);
+        when(passwordEncoder.encode("new-strong-pw")).thenReturn("hashed-new");
+
+        userService.resetPassword(dto);
+
+        assertEquals("hashed-new", user.getCredentials().getPassword());
+        assertTrue(token.isUsed());
+        verify(userRepository).save(user);
+        verify(passwordResetTokenRepository).save(token);
+    }
+
+    @Test
+    @DisplayName("resetPassword throws BadRequestException when the token is unknown")
+    void resetPassword_tokenNotFound() {
+        when(passwordResetTokenRepository.findByToken("missing")).thenReturn(null);
+
+        assertThrows(BadRequestException.class,
+                () -> userService.resetPassword(new ResetPasswordDto("missing", "new-strong-pw")));
+
+        verify(passwordEncoder, never()).encode(any());
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("resetPassword throws BadRequestException when the token was already used")
+    void resetPassword_tokenUsed() {
+        PasswordResetToken token = resetToken("tok-used", true, LocalDateTime.now().plusMinutes(10));
+        when(passwordResetTokenRepository.findByToken("tok-used")).thenReturn(token);
+
+        assertThrows(BadRequestException.class,
+                () -> userService.resetPassword(new ResetPasswordDto("tok-used", "new-strong-pw")));
+
+        verify(passwordEncoder, never()).encode(any());
+        verify(userRepository, never()).save(any());
+        assertTrue(token.isUsed());
+    }
+
+    @Test
+    @DisplayName("resetPassword throws BadRequestException when the token has expired")
+    void resetPassword_tokenExpired() {
+        PasswordResetToken token = resetToken("tok-old", false, LocalDateTime.now().minusMinutes(1));
+        when(passwordResetTokenRepository.findByToken("tok-old")).thenReturn(token);
+
+        assertThrows(BadRequestException.class,
+                () -> userService.resetPassword(new ResetPasswordDto("tok-old", "new-strong-pw")));
+
+        verify(passwordEncoder, never()).encode(any());
+        verify(userRepository, never()).save(any());
+        assertFalse(token.isUsed());
+    }
+}

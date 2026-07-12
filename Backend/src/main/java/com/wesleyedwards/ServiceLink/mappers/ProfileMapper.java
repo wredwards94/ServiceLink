@@ -2,6 +2,7 @@ package com.wesleyedwards.ServiceLink.mappers;
 
 import com.wesleyedwards.ServiceLink.dtos.ProfileRequestDto;
 import com.wesleyedwards.ServiceLink.dtos.ProfileResponseDto;
+import com.wesleyedwards.ServiceLink.dtos.ProfileUpdateDto;
 import com.wesleyedwards.ServiceLink.entities.Profile;
 import org.mapstruct.BeanMapping;
 import org.mapstruct.Mapper;
@@ -14,5 +15,5 @@ public interface ProfileMapper {
     ProfileResponseDto entityToResponseDto(Profile profile);
 
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
-    void updateProfileFromDto(ProfileRequestDto dto, @MappingTarget Profile profile);
+    void updateProfileFromDto(ProfileUpdateDto dto, @MappingTarget Profile profile);
 }

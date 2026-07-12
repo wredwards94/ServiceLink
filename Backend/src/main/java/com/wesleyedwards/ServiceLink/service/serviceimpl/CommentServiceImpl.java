@@ -1,10 +1,12 @@
 package com.wesleyedwards.ServiceLink.service.serviceimpl;
 
+import com.wesleyedwards.ServiceLink.config.UserPrincipal;
 import com.wesleyedwards.ServiceLink.dtos.CommentRequestDto;
 import com.wesleyedwards.ServiceLink.dtos.CommentResponseDto;
 import com.wesleyedwards.ServiceLink.entities.Comment;
 import com.wesleyedwards.ServiceLink.entities.Ticket;
 import com.wesleyedwards.ServiceLink.entities.User;
+import com.wesleyedwards.ServiceLink.exceptions.ForbiddenException;
 import com.wesleyedwards.ServiceLink.exceptions.NotFoundException;
 import com.wesleyedwards.ServiceLink.mappers.CommentMapper;
 import com.wesleyedwards.ServiceLink.repositories.CommentRepository;
@@ -15,6 +17,8 @@ import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -26,6 +30,7 @@ public class CommentServiceImpl implements CommentService {
     private final TicketRepository ticketRepository;
     private final UserRepository userRepository;
     private final CommentMapper commentMapper;
+    private static final Duration EDIT_WINDOW = Duration.ofMinutes(15);
 
 
     @Override
@@ -60,8 +65,16 @@ public class CommentServiceImpl implements CommentService {
     }
 
     @Override
-    public CommentResponseDto updateComment(Long commentId, CommentRequestDto updatedComment) {
+    public CommentResponseDto updateComment(Long commentId, CommentRequestDto updatedComment, UserPrincipal actor) {
         Comment foundComment = checkCommentExists(commentId);
+
+        // author can edit their own within the window; staff can edit anytime
+        if (!actor.isStaff()) {
+            if (!foundComment.getAuthor().getUserId().equals(actor.getUserId()))
+                throw new ForbiddenException("You can only edit your own comments");
+            if (foundComment.getCreatedAt().isBefore(LocalDateTime.now().minus(EDIT_WINDOW)))
+                throw new ForbiddenException("The edit window for this comment has passed");
+        }
 
         commentMapper.updateCommentFromDto(updatedComment, foundComment);
 
@@ -93,4 +106,6 @@ public class CommentServiceImpl implements CommentService {
 
         return optionalComment.get();
     }
+
+
 }

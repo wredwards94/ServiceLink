@@ -1,20 +1,29 @@
 package com.wesleyedwards.ServiceLink.service.serviceimpl;
 
 import com.wesleyedwards.ServiceLink.config.JwtUtil;
+import com.wesleyedwards.ServiceLink.config.UserPrincipal;
 import com.wesleyedwards.ServiceLink.dtos.*;
+import com.wesleyedwards.ServiceLink.entities.PasswordResetToken;
 import com.wesleyedwards.ServiceLink.entities.User;
+import com.wesleyedwards.ServiceLink.enums.Role;
 import com.wesleyedwards.ServiceLink.exceptions.BadRequestException;
+import com.wesleyedwards.ServiceLink.exceptions.ForbiddenException;
 import com.wesleyedwards.ServiceLink.exceptions.NotFoundException;
-import com.wesleyedwards.ServiceLink.mappers.CredentialsMapper;
 import com.wesleyedwards.ServiceLink.mappers.ProfileMapper;
 import com.wesleyedwards.ServiceLink.mappers.UserMapper;
-import com.wesleyedwards.ServiceLink.repositories.TicketRepository;
+import com.wesleyedwards.ServiceLink.repositories.PasswordResetTokenRepository;
 import com.wesleyedwards.ServiceLink.repositories.UserRepository;
 import com.wesleyedwards.ServiceLink.service.UserService;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -23,33 +32,32 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class UserServiceImpl implements UserService {
     private final UserRepository userRepository;
+    private final PasswordResetTokenRepository passwordResetTokenRepository;
     private final UserMapper userMapper;
     private final ProfileMapper profileMapper;
     private final PasswordEncoder passwordEncoder;
+    private final AuthenticationManager authenticationManager;
     private final JwtUtil jwtUtil;
+    private final Logger log = LoggerFactory.getLogger(UserServiceImpl.class);
 
     @Override
     public UserResponseDto createUser(UserRequestDto newUser) {
         User user = userMapper.requestDtoToEntity(newUser);
-        user.getCredentials().setPassword(
-                passwordEncoder.encode(user.getCredentials().getPassword())
-        );
+        setEncodedPassword(user, newUser.credentials().password());
         userRepository.saveAndFlush(user);
         return userMapper.entityToResponseDto(user);
     }
 
     @Override
     public UserIdResponseDto login(CredentialsRequestDto credentials) {
-        User foundUser = checkUserExistsByUsername(credentials.username());
-        if(!passwordEncoder.matches(credentials.password(), foundUser.getCredentials().getPassword()))
-            throw new BadRequestException("Invalid password");
+        Authentication auth = authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(
+                        credentials.username(), credentials.password()));
 
-        String token = jwtUtil.generateToken(
-                foundUser.getCredentials().getUsername(),
-                foundUser.getRole()
-        );
+        UserPrincipal principal = (UserPrincipal) auth.getPrincipal();
 
-        return new UserIdResponseDto(foundUser.getUserId(), token, foundUser.getRole());
+        String token = jwtUtil.generateToken(principal.getUsername(), principal.getRole());
+        return new UserIdResponseDto(principal.getUserId(), token, principal.getRole());
     }
 
     @Override
@@ -63,7 +71,8 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public UserResponseDto updateUser(UUID userId, ProfileRequestDto updateProf) {
+    public UserResponseDto updateUser(UUID userId, ProfileUpdateDto updateProf, UserPrincipal actor) {
+        assertSelfOrAdmin(actor, userId);
         User foundUser = checkUserExists(userId);
 
         profileMapper.updateProfileFromDto(updateProf, foundUser.getProfile());
@@ -72,11 +81,66 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public void deleteuser(UUID userId) {
+    public UserResponseDto updateUserRole(UUID userId, Role role) {
         User foundUser = checkUserExists(userId);
 
-        foundUser.setDisabled(true);
-        userRepository.saveAndFlush(foundUser);
+        foundUser.setRole(role);
+
+        return userMapper.entityToResponseDto(userRepository.save(foundUser));
+    }
+
+    @Override
+    public void deleteUser(UUID userId) {
+        User foundUser = checkUserExists(userId);
+        userRepository.delete(foundUser);
+    }
+
+    @Override
+    public void changePassword(UUID userId, ChangePasswordRequestDto dto) {
+        User foundUser = checkUserExists(userId);
+
+        if(!passwordEncoder.matches(dto.currentPassword(), foundUser.getCredentials().getPassword()))
+            throw new BadRequestException("Invalid password");
+
+        setEncodedPassword(foundUser, dto.newPassword());
+        userRepository.save(foundUser);
+    }
+
+    @Override
+    public void forgotPassword(ForgotPasswordDto dto) {
+        userRepository.findByProfileEmail(dto.email()).ifPresent(user -> {
+            // create + save token, then log it
+            PasswordResetToken token = new PasswordResetToken();
+            token.setToken(UUID.randomUUID().toString());
+            token.setUser(user);
+            token.setExpiresAt(LocalDateTime.now().plusMinutes(15));
+            passwordResetTokenRepository.save(token);
+            log.info("Password reset token for {}: {}", dto.email(), token.getToken());
+        });
+    }
+
+    @Override
+    public void resetPassword(ResetPasswordDto dto) {
+        PasswordResetToken token = passwordResetTokenRepository.findByToken(dto.token());
+
+        if(token == null) throw new BadRequestException("Invalid or expired token");
+
+        if(token.isUsed()) throw new BadRequestException("Invalid or expired token");
+
+        if(token.getExpiresAt().isBefore(LocalDateTime.now())) throw new BadRequestException("Invalid or expired token");
+
+        User user = token.getUser();
+        setEncodedPassword(user, dto.newPassword());
+        userRepository.save(user);
+        token.setUsed(true);
+        passwordResetTokenRepository.save(token);
+    }
+
+    @Override
+    public void setUserStatus(UUID id, StatusRequestDto statusDto) {
+        User user = checkUserExists(id);
+        user.setDisabled(statusDto.isDisabled());
+        userRepository.save(user);
     }
 
     private User checkUserExists(UUID userId) {
@@ -87,11 +151,13 @@ public class UserServiceImpl implements UserService {
         return optionalUser.get();
     }
 
-    private User checkUserExistsByUsername(String username) {
-        Optional<User> optionalUser = userRepository.findByCredentialsUsername(username);
+    private void setEncodedPassword(User user, String password) {
+        user.getCredentials().setPassword(passwordEncoder.encode(password));
+    }
 
-        if(optionalUser.isEmpty()) throw new NotFoundException("User: " + username + " does not exist");
-
-        return optionalUser.get();
+    private void assertSelfOrAdmin(UserPrincipal actor, UUID targetId) {
+        if (actor.getRole() != Role.ADMIN && !targetId.equals(actor.getUserId())) {
+            throw new ForbiddenException("You are not allowed to modify this profile");
+        }
     }
 }

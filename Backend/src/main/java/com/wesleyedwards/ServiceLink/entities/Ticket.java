@@ -9,6 +9,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.SoftDelete;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
@@ -18,6 +19,7 @@ import java.util.List;
 @NoArgsConstructor
 @Getter
 @Setter
+@SoftDelete
 public class Ticket {
 
     @Id
@@ -28,7 +30,7 @@ public class Ticket {
     private String description;
 
     @Enumerated(EnumType.STRING)
-    private TicketStatus status;// Open, In Progress, Resolved
+    private TicketStatus status = TicketStatus.NEW;// Open, In Progress, Resolved
 
     @Enumerated(EnumType.STRING)
     private TicketPriority priority; // Low, Medium, High

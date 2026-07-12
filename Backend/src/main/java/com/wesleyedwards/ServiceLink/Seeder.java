@@ -15,6 +15,8 @@ import org.springframework.stereotype.Component;
 import java.util.*;
 
 @Component
+// Fully qualified to avoid clashing with the entities.Profile wildcard import below.
+@org.springframework.context.annotation.Profile("!test")
 @RequiredArgsConstructor
 public class Seeder implements CommandLineRunner {
 

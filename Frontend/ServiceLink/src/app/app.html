@@ -1,0 +1,8 @@
+<div class="flex h-screen bg-gray-900">
+  @if (showSidebar) {
+    <app-sidebar />
+  }
+  <main class="flex-1 overflow-y-auto">
+    <router-outlet />
+  </main>
+</div>

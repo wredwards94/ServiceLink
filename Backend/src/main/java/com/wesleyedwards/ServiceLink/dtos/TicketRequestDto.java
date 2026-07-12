@@ -12,9 +12,6 @@ public record TicketRequestDto(
         @NotBlank(message = "Description is required")
         String description,
 
-        @NotNull(message = "Status is required")
-        TicketStatus status,
-
         @NotNull(message = "Priority is required")
         TicketPriority priority,
 
