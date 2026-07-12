@@ -39,6 +39,7 @@ A distilled record of the Cowork session working on ServiceLink: project context
   Also `~/.testcontainers.properties` with `docker.host=unix:///Users/wesleyedwards/.colima/default/docker.sock` as a shell-independent fallback.
 - **On Windows:** install Docker Desktop for Windows for the Testcontainers test; otherwise the context test auto-skips (see §5, `@EnabledIf`).
 - The context test is guarded with `@EnabledIf("dockerAvailable")`, so a machine without Docker **skips** it (build stays green) while CI runs it.
+- **`@Query` HQL is only validated by the full `@SpringBootTest` context test.** The Mockito service tests and `@WebMvcTest` slices mock/exclude the repository, so a malformed `@Query` compiles and passes them silently — it only blows up when the JPA context boots (repository bean creation → `QueryCreationException` → whole context fails). *Real example:* a stray comment-search query (`c.ticket.id`, `c.content`) got pasted into `TicketRepository.searchByKeyword`; every unit test passed, but the context test failed. **Always run the context test (Docker up) before trusting a repository/`@Query` change** — don't rely on the unit tests to catch it.
 
 ---
 
