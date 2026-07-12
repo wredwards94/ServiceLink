@@ -70,8 +70,8 @@ Depended on Phase 1 (identity from JWT).
 **Self-assignment & bulk actions.**
 Assign-to-me, unassign, and bulk status/assignment changes to speed up queue management.
 
-**Comment search & pagination.**
-Both are already stubbed out in `CommentController` comments. Tickets already support paginated search (`searchByKeyword`, `advancedSearch`); bring comments to parity.
+**Comment search & pagination.** ✅ *Done.*
+Brought comments to parity with tickets: `GET /api/comments/ticket/{ticketId}` is now paginated (`Page` + `page`/`size`/`sortBy` params, PagedModel `$.content`/`$.page` shape) and `GET /api/comments/ticket/{ticketId}/search` does a case-insensitive keyword search over `content`, scoped to one ticket (repo-level JPQL, correct pagination totals). Both are ownership-guarded: staff or the ticket's requester, 403 otherwise — this also closed a pre-existing gap where **any** USER could read the comments on **any** ticket. Covered by staff/owner/forbidden/missing service tests and controller tests (param forwarding, PagedModel shape, 403). *Open niggles: default sort is `createdAt` descending (consider ascending for conversation order); minor cleanups (leading slashes on the new mappings, orphaned non-paginated `findAllByTicketId`, unused imports).*
 
 ---
 
@@ -144,5 +144,9 @@ Stand up automated build/test/deploy and make the app deployable outside localho
 Small, non-blocking cleanups to revisit during a dedicated code-revision pass:
 
 - **`PasswordResetToken` construction.** Replace the raw setters in `forgotPassword` with a static factory (`PasswordResetToken.issueFor(user, Duration)`) so tokens are valid-by-construction — both `token` and `expiresAt` are `nullable = false`, and a factory prevents a forgotten field from becoming a runtime constraint violation. Builder is an option but heavier than needed for three required fields; prefer a private constructor + factory.
+
+- **Duplicated `assertCanView`.** The ticket view-ownership check now lives in both `TicketServiceImpl` and `CommentServiceImpl`. Two copies is tolerable; extract a shared helper (e.g. a `TicketAccessPolicy` component) if a third copy appears.
+
+- **Comment endpoint cleanups.** Default comment sort is `createdAt` descending — consider ascending (conversation order). Also: add leading slashes to the new `ticket/...` mappings for consistency, delete the commented-out pre-pagination `getCommentsForTicket`, remove the now-unused `List<Comment> findAllByTicketId(Long)` overload and stale `List` imports.
 
 *Roadmap generated from a review of the current codebase.*

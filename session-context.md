@@ -88,7 +88,8 @@ JWT-derived identity, SecurityConfig ordering fix, role-management endpoint, req
   - ✅ Profiles (edit = self or admin).
   - ✅ Comments (author edit within 15-min window; delete staff-only).
   - ✅ Status/priority/search endpoints scoped to requester for non-staff (nullable `requesterId` in the repo queries; `null` = staff/unscoped — keeps pagination totals correct). Verified in CI.
-- ⬜ Remaining Phase 2: ticket history/audit trail, attachments, internal vs. public comments, self-assignment & bulk actions, comment search & pagination.
+- ✅ Comment search & pagination: `GET /api/comments/ticket/{id}` paginated + `GET /api/comments/ticket/{id}/search` (keyword over `content`, per-ticket, repo-level JPQL). Both guarded staff-or-requester (403 otherwise) — also closed a pre-existing gap where any USER could read any ticket's comments. `assertCanView` duplicated into `CommentServiceImpl` (extract on third copy).
+- ⬜ Remaining Phase 2 (agreed order): internal vs. public comments → self-assignment & bulk actions → ticket history/audit trail → attachments. (History before attachments so attachment events land in the timeline from day one.)
 
 **DevOps track**
 - ✅ CI test gate + Testcontainers (parity gap closed).
@@ -98,12 +99,13 @@ JWT-derived identity, SecurityConfig ordering fix, role-management endpoint, req
 
 ## 8. Pending goals / open threads (start here next)
 
-1. **Next Phase 2 feature** (user's choice): comment search & pagination, self-assignment & bulk actions, internal vs. public comments, ticket history, or attachments.
-2. **Deferred refactor:** replace `PasswordResetToken`'s raw setters in `forgotPassword` with a static factory (`PasswordResetToken.issueFor(user, Duration)`) — valid-by-construction (`token`/`expiresAt` are non-null columns).
-3. **Soft-delete caveat:** deleted users still hold the `unique` `username`/`email` constraints (can't re-register those). Revisit if needed (partial unique index or mangling).
-4. **JWT lifecycle (Phase 4):** tokens issued before a user is disabled/deleted stay valid until expiry (no refresh/revocation). Add an `isEnabled()` guard in `JwtAuthFilter` if immediate lockout is needed.
+1. **Next feature: internal vs. public comments** (first of the agreed Phase 2 sequence: internal comments → self-assignment & bulk actions → ticket history → attachments). Visibility flag on `Comment`, filter reads for non-staff — including the comments embedded in `TicketResponseDto`, not just the comment endpoints.
+2. **Comment endpoint niggles** (from the search/pagination review, non-blocking): default sort is `createdAt` descending — consider ascending for conversation order; add leading slashes to the new `ticket/...` mappings; delete the commented-out old `getCommentsForTicket`; remove the orphaned `List<Comment> findAllByTicketId(Long)` overload and unused `List` imports.
+3. **Deferred refactor:** replace `PasswordResetToken`'s raw setters in `forgotPassword` with a static factory (`PasswordResetToken.issueFor(user, Duration)`) — valid-by-construction (`token`/`expiresAt` are non-null columns). Also: `assertCanView` now duplicated in `TicketServiceImpl` + `CommentServiceImpl` — extract a shared helper if a third copy appears.
+4. **Soft-delete caveat:** deleted users still hold the `unique` `username`/`email` constraints (can't re-register those). Revisit if needed (partial unique index or mangling).
+5. **JWT lifecycle (Phase 4):** tokens issued before a user is disabled/deleted stay valid until expiry (no refresh/revocation). Add an `isEnabled()` guard in `JwtAuthFilter` if immediate lockout is needed.
 
-*Resolved since last update:* the ticket search/status ownership gap (scoped to requester for non-staff, repo-level filtering) and the `VIA_DTO` pagination assertion (confirmed green in CI).
+*Resolved since last update:* ticket search/status ownership gap (requester-scoped repo queries, CI-verified); `VIA_DTO` pagination assertion confirmed green; comment search & pagination shipped with staff-or-requester guards (closing the open comment-read hole).
 
 ---
 
