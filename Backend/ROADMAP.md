@@ -58,13 +58,14 @@ File and screenshot uploads on tickets and comments — close to essential for I
 **Internal vs. public comments.**
 Add a visibility flag so agents can leave notes the requester cannot see. (The `Comment` entity is the natural home.)
 
-**Ownership-based authorization.** 🟡 *In progress (tickets + profiles done; comments remaining).*
-Security was role-based only. Layering in ownership checks where "who owns it" matters — method-level logic (service-layer guards throwing `ForbiddenException` → 403), not just `requestMatchers` rules:
-- *Tickets:* ✅ Read ownership enforced — a USER sees only tickets they requested (`getAllTickets` filters; `getTicketById`/`getTicketsByRequester`/`getTicketsAssignedToUser` guard via `assertCanView`/`assertSelfOrStaff`), staff see all, 403 otherwise. Modify (edit/delete/status/assign) intentionally stays admin + any agent, already enforced by the URL rules. ⚠️ *Gap:* the status/priority/search endpoints (`getAllTicketsByStatus`, `getAllTicketsByPriority`, `searchTickets`, `advancedSearch`) are not ownership-filtered — a USER can hit e.g. `GET /api/tickets/status/NEW` and see everyone's tickets. Either filter these by requester for non-staff or restrict them to staff only.
+**Ownership-based authorization.** ✅ *Done.*
+Security was role-based only. Layered in ownership checks where "who owns it" matters — method-level logic (service-layer guards throwing `ForbiddenException` → 403), not just `requestMatchers` rules:
+- *Tickets:* ✅ Read ownership enforced — a USER sees only tickets they requested (`getAllTickets` filters; `getTicketById`/`getTicketsByRequester`/`getTicketsAssignedToUser` guard via `assertCanView`/`assertSelfOrStaff`), staff see all, 403 otherwise. Modify (edit/delete/status/assign) intentionally stays admin + any agent, already enforced by the URL rules.
+- *Status/priority/search endpoints:* ✅ Gap closed — `getAllTicketsByStatus`, `getAllTicketsByPriority`, `searchTickets`, and `advancedSearch` now scope results to the requester for non-staff. Filtering is pushed into the repository queries via a nullable `requesterId` param (`null` = staff, unscoped) so pagination totals stay correct; the service computes the scope from the JWT principal (`requesterScope(actor)`). Covered by staff (unscoped) + USER (scoped) service tests.
 - *User profiles:* ✅ Edit ownership enforced — `updateUser` guards via `assertSelfOrAdmin` (a USER edits only their own profile; ADMIN edits anyone), 403 otherwise. Viewing (`getUser`) intentionally left open to any authenticated user (name/email only). Covered by self/other/admin service tests.
-- *Comments:* ⬜ authors can't edit/delete their own comment yet (ADMIN/AGENT only) — decide whether authors should manage their own.
+- *Comments:* ✅ Authors can edit their own comment within a 15-minute window (staff bypass the window); delete stays staff-only.
 
-Depends on Phase 1 (identity from JWT), which is now in place.
+Depended on Phase 1 (identity from JWT).
 
 **Self-assignment & bulk actions.**
 Assign-to-me, unassign, and bulk status/assignment changes to speed up queue management.

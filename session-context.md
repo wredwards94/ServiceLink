@@ -83,10 +83,11 @@ JWT-derived identity, SecurityConfig ordering fix, role-management endpoint, req
 
 **Phase 2 — Core ticketing: in progress**
 - ✅ Richer status lifecycle (statuses + transition state machine + `PATCH /{id}/status`).
-- 🟡 Ownership-based authorization:
+- ✅ Ownership-based authorization (COMPLETE):
   - ✅ Tickets (read ownership; modify stays admin+agent).
   - ✅ Profiles (edit = self or admin).
   - ✅ Comments (author edit within 15-min window; delete staff-only).
+  - ✅ Status/priority/search endpoints scoped to requester for non-staff (nullable `requesterId` in the repo queries; `null` = staff/unscoped — keeps pagination totals correct). Verified in CI.
 - ⬜ Remaining Phase 2: ticket history/audit trail, attachments, internal vs. public comments, self-assignment & bulk actions, comment search & pagination.
 
 **DevOps track**
@@ -97,12 +98,12 @@ JWT-derived identity, SecurityConfig ordering fix, role-management endpoint, req
 
 ## 8. Pending goals / open threads (start here next)
 
-1. **Ticket search/status ownership gap (flagged, not fixed).** `getAllTicketsByStatus`, `getAllTicketsByPriority`, `searchTickets`, `advancedSearch` are **not** ownership-filtered — a USER can hit e.g. `GET /api/tickets/status/NEW` and see everyone's tickets. **Decision still owed:** filter these by requester for non-staff, or restrict the endpoints to staff only. (This is the last piece to fully close the ownership item.)
-2. **Verify the `VIA_DTO` pagination assertion in CI.** The strengthened `searchTickets_forwardsKeyword` test asserts `$.page.totalElements` — confirm the `@WebMvcTest` slice applies `@EnableSpringDataWebSupport`. If red, add `@Import`/annotate the test.
-3. **Deferred refactor:** replace `PasswordResetToken`'s raw setters in `forgotPassword` with a static factory (`PasswordResetToken.issueFor(user, Duration)`) — valid-by-construction (`token`/`expiresAt` are non-null columns).
-4. **Soft-delete caveat:** deleted users still hold the `unique` `username`/`email` constraints (can't re-register those). Revisit if needed (partial unique index or mangling).
-5. **JWT lifecycle (Phase 4):** tokens issued before a user is disabled/deleted stay valid until expiry (no refresh/revocation). Add an `isEnabled()` guard in `JwtAuthFilter` if immediate lockout is needed.
-6. **Next Phase 2 feature** (user's choice): comment search & pagination, self-assignment & bulk actions, internal vs. public comments, ticket history, or attachments.
+1. **Next Phase 2 feature** (user's choice): comment search & pagination, self-assignment & bulk actions, internal vs. public comments, ticket history, or attachments.
+2. **Deferred refactor:** replace `PasswordResetToken`'s raw setters in `forgotPassword` with a static factory (`PasswordResetToken.issueFor(user, Duration)`) — valid-by-construction (`token`/`expiresAt` are non-null columns).
+3. **Soft-delete caveat:** deleted users still hold the `unique` `username`/`email` constraints (can't re-register those). Revisit if needed (partial unique index or mangling).
+4. **JWT lifecycle (Phase 4):** tokens issued before a user is disabled/deleted stay valid until expiry (no refresh/revocation). Add an `isEnabled()` guard in `JwtAuthFilter` if immediate lockout is needed.
+
+*Resolved since last update:* the ticket search/status ownership gap (scoped to requester for non-staff, repo-level filtering) and the `VIA_DTO` pagination assertion (confirmed green in CI).
 
 ---
 
