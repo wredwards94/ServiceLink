@@ -187,13 +187,16 @@ class TicketControllerTest {
     }
 
     @Test
-    @DisplayName("GET /api/tickets/search forwards keyword and a pageable")
+    @DisplayName("GET /api/tickets/search forwards the keyword and returns the PagedModel shape")
     void searchTickets_forwardsKeyword() throws Exception {
         Page<TicketResponseDto> page = new PageImpl<>(List.of(sampleTicket(1L)));
         when(ticketService.searchTickets(eq("login"), any(Pageable.class))).thenReturn(page);
 
         mockMvc.perform(get("/api/tickets/search").param("keyword", "login"))
-                .andExpect(status().isOk());
+                .andExpect(status().isOk())
+                // VIA_DTO shape: content array + nested page metadata
+                .andExpect(jsonPath("$.content[0].id").value(1))
+                .andExpect(jsonPath("$.page.totalElements").value(1));
 
         verify(ticketService).searchTickets(eq("login"), any(Pageable.class));
     }
