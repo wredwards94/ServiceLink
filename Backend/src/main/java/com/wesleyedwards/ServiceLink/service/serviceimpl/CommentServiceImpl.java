@@ -15,11 +15,12 @@ import com.wesleyedwards.ServiceLink.repositories.UserRepository;
 import com.wesleyedwards.ServiceLink.service.CommentService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -51,10 +52,10 @@ public class CommentServiceImpl implements CommentService {
     }
 
     @Override
-    public List<CommentResponseDto> getCommentsForTicket(Long ticketId) {
-        checkTicketExists(ticketId);
+    public Page<CommentResponseDto> getCommentsForTicket(Long ticketId,  Pageable pageable, UserPrincipal actor) {
+        assertCanView(actor, checkTicketExists(ticketId));
 
-        return commentMapper.entitiesToResponseDtos(commentRepository.findAllByTicketId(ticketId));
+        return commentRepository.findAllByTicketId(ticketId, pageable).map(commentMapper::entityToResponseDto);
     }
 
     @Override
@@ -81,6 +82,12 @@ public class CommentServiceImpl implements CommentService {
         return commentMapper.entityToResponseDto(commentRepository.saveAndFlush(foundComment));
     }
 
+    @Override
+    public Page<CommentResponseDto> searchComments(Long ticketId, String keyword, Pageable pageable, UserPrincipal actor) {
+        assertCanView(actor, checkTicketExists(ticketId));
+        return commentRepository.searchByTicketAndKeyword(ticketId, keyword, pageable).map(commentMapper::entityToResponseDto);
+    }
+
     private Ticket checkTicketExists(Long id) {
         Optional<Ticket> optionalTicket = ticketRepository.findById(id);
 
@@ -89,6 +96,14 @@ public class CommentServiceImpl implements CommentService {
 //        System.out.println(optionalTicket.get().getAssignedTo().getUserId());
 
         return optionalTicket.get();
+    }
+    private void assertCanView(UserPrincipal actor, Ticket ticket) {
+        if (actor.isStaff()) return;
+        boolean isRequester = ticket.getRequester() != null
+                && ticket.getRequester().getUserId().equals(actor.getUserId());
+        if (!isRequester) {
+            throw new ForbiddenException("You are not allowed to view this ticket");
+        }
     }
 
     private User checkUserExists(UUID userId) {

@@ -6,12 +6,14 @@ import com.wesleyedwards.ServiceLink.dtos.CommentResponseDto;
 import com.wesleyedwards.ServiceLink.service.CommentService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @CrossOrigin(origins="*")
 @RestController
@@ -28,11 +30,6 @@ public class CommentController {
                 commentRequest));
     }
 
-    @GetMapping("/ticket/{ticketId}")
-    public ResponseEntity<List<CommentResponseDto>> getCommentsForTicket(@PathVariable Long ticketId) {
-        return ResponseEntity.ok(commentService.getCommentsForTicket(ticketId));
-    }
-
     @DeleteMapping("/{commentId}")
     public ResponseEntity<Void> deleteComment(@PathVariable Long commentId) {
         commentService.deleteComment(commentId);
@@ -47,21 +44,29 @@ public class CommentController {
     }
 
 //    Add comment searching using filters and/or keywords
-    /*@GetMapping("/{ticketId}/search")
-    public ResponseEntity<List<CommentResponseDto>> searchComments(
+    @GetMapping("ticket/{ticketId}/search")
+    public ResponseEntity<Page<CommentResponseDto>> searchComments(
             @PathVariable Long ticketId,
-            @RequestParam String keyword) {
-        return ResponseEntity.ok(commentService.searchComments(ticketId, keyword));
-    }*/
+            @RequestParam String keyword,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "createdAt") String sortBy,
+            @AuthenticationPrincipal UserPrincipal actor) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by(sortBy).descending());
+        return ResponseEntity.ok(commentService.searchComments(ticketId, keyword, pageable, actor));
+    }
 
 //    Add Pagination for future
-    /*@GetMapping("/{ticketId}")
-    public ResponseEntity<List<CommentResponseDto>> getCommentsForTicket(
+    @GetMapping("/ticket/{ticketId}")
+    public ResponseEntity<Page<CommentResponseDto>> getCommentsForTicket(
             @PathVariable Long ticketId,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
-        return ResponseEntity.ok(commentService.getCommentsForTicket(ticketId, page, size));
-    }*/
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "createdAt") String sortBy,
+            @AuthenticationPrincipal UserPrincipal actor) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by(sortBy).descending());
+        return ResponseEntity.ok(commentService.getCommentsForTicket(ticketId, pageable, actor));
+    }
 
 //    Add logging for production issues
     /*private static final Logger logger = LoggerFactory.getLogger(CommentController.class);

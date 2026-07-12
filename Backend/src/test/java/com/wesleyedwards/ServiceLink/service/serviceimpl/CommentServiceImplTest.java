@@ -20,6 +20,10 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -27,6 +31,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
@@ -117,24 +122,124 @@ class CommentServiceImplTest {
     }
 
     @Test
-    @DisplayName("getCommentsForTicket returns mapped comments for an existing ticket")
-    void getCommentsForTicket_returnsComments() {
-        List<Comment> comments = List.of(comment);
-        List<CommentResponseDto> dtos = List.of(commentDto);
+    @DisplayName("getCommentsForTicket returns a mapped page for staff")
+    void getCommentsForTicket_staffSees() {
+        Pageable pageable = PageRequest.of(0, 10);
+        Page<Comment> page = new PageImpl<>(List.of(comment));
         when(ticketRepository.findById(ticketId)).thenReturn(Optional.of(ticket));
-        when(commentRepository.findAllByTicketId(ticketId)).thenReturn(comments);
-        when(commentMapper.entitiesToResponseDtos(comments)).thenReturn(dtos);
+        when(commentRepository.findAllByTicketId(ticketId, pageable)).thenReturn(page);
+        when(commentMapper.entityToResponseDto(comment)).thenReturn(commentDto);
 
-        assertSame(dtos, commentService.getCommentsForTicket(ticketId));
+        Page<CommentResponseDto> result =
+                commentService.getCommentsForTicket(ticketId, pageable, principal(UUID.randomUUID(), Role.AGENT));
+
+        assertEquals(1, result.getTotalElements());
+        assertSame(commentDto, result.getContent().get(0));
+    }
+
+    @Test
+    @DisplayName("getCommentsForTicket returns the page for the ticket's requester")
+    void getCommentsForTicket_ownerSees() {
+        UUID requesterId = UUID.randomUUID();
+        User requester = new User();
+        requester.setUserId(requesterId);
+        ticket.setRequester(requester);
+        Pageable pageable = PageRequest.of(0, 10);
+        Page<Comment> page = new PageImpl<>(List.of(comment));
+        when(ticketRepository.findById(ticketId)).thenReturn(Optional.of(ticket));
+        when(commentRepository.findAllByTicketId(ticketId, pageable)).thenReturn(page);
+        when(commentMapper.entityToResponseDto(comment)).thenReturn(commentDto);
+
+        Page<CommentResponseDto> result =
+                commentService.getCommentsForTicket(ticketId, pageable, principal(requesterId, Role.USER));
+
+        assertEquals(1, result.getTotalElements());
+    }
+
+    @Test
+    @DisplayName("getCommentsForTicket forbids a USER who is not the requester")
+    void getCommentsForTicket_nonOwnerForbidden() {
+        User requester = new User();
+        requester.setUserId(UUID.randomUUID()); // someone else
+        ticket.setRequester(requester);
+        Pageable pageable = PageRequest.of(0, 10);
+        when(ticketRepository.findById(ticketId)).thenReturn(Optional.of(ticket));
+
+        assertThrows(ForbiddenException.class,
+                () -> commentService.getCommentsForTicket(ticketId, pageable, principal(UUID.randomUUID(), Role.USER)));
+        verify(commentRepository, never()).findAllByTicketId(anyLong(), any(Pageable.class));
     }
 
     @Test
     @DisplayName("getCommentsForTicket throws when the ticket does not exist")
     void getCommentsForTicket_ticketMissing() {
+        Pageable pageable = PageRequest.of(0, 10);
         when(ticketRepository.findById(ticketId)).thenReturn(Optional.empty());
 
-        assertThrows(NotFoundException.class, () -> commentService.getCommentsForTicket(ticketId));
-        verify(commentRepository, never()).findAllByTicketId(anyLong());
+        assertThrows(NotFoundException.class,
+                () -> commentService.getCommentsForTicket(ticketId, pageable, principal(authorId, Role.ADMIN)));
+        verify(commentRepository, never()).findAllByTicketId(anyLong(), any(Pageable.class));
+    }
+
+    @Test
+    @DisplayName("searchComments returns a mapped page for staff")
+    void searchComments_mapsPage() {
+        Pageable pageable = PageRequest.of(0, 10);
+        Page<Comment> page = new PageImpl<>(List.of(comment));
+        when(ticketRepository.findById(ticketId)).thenReturn(Optional.of(ticket));
+        when(commentRepository.searchByTicketAndKeyword(ticketId, "advise", pageable)).thenReturn(page);
+        when(commentMapper.entityToResponseDto(comment)).thenReturn(commentDto);
+
+        Page<CommentResponseDto> result =
+                commentService.searchComments(ticketId, "advise", pageable, principal(UUID.randomUUID(), Role.ADMIN));
+
+        assertEquals(1, result.getTotalElements());
+        assertSame(commentDto, result.getContent().get(0));
+        verify(commentRepository).searchByTicketAndKeyword(ticketId, "advise", pageable);
+    }
+
+    @Test
+    @DisplayName("searchComments allows the ticket's requester")
+    void searchComments_ownerAllowed() {
+        UUID requesterId = UUID.randomUUID();
+        User requester = new User();
+        requester.setUserId(requesterId);
+        ticket.setRequester(requester);
+        Pageable pageable = PageRequest.of(0, 10);
+        Page<Comment> page = new PageImpl<>(List.of(comment));
+        when(ticketRepository.findById(ticketId)).thenReturn(Optional.of(ticket));
+        when(commentRepository.searchByTicketAndKeyword(ticketId, "advise", pageable)).thenReturn(page);
+        when(commentMapper.entityToResponseDto(comment)).thenReturn(commentDto);
+
+        Page<CommentResponseDto> result =
+                commentService.searchComments(ticketId, "advise", pageable, principal(requesterId, Role.USER));
+
+        assertEquals(1, result.getTotalElements());
+    }
+
+    @Test
+    @DisplayName("searchComments forbids a USER who is not the requester")
+    void searchComments_nonOwnerForbidden() {
+        User requester = new User();
+        requester.setUserId(UUID.randomUUID()); // someone else
+        ticket.setRequester(requester);
+        Pageable pageable = PageRequest.of(0, 10);
+        when(ticketRepository.findById(ticketId)).thenReturn(Optional.of(ticket));
+
+        assertThrows(ForbiddenException.class,
+                () -> commentService.searchComments(ticketId, "advise", pageable, principal(UUID.randomUUID(), Role.USER)));
+        verify(commentRepository, never()).searchByTicketAndKeyword(anyLong(), any(), any(Pageable.class));
+    }
+
+    @Test
+    @DisplayName("searchComments throws when the ticket does not exist")
+    void searchComments_ticketMissing() {
+        Pageable pageable = PageRequest.of(0, 10);
+        when(ticketRepository.findById(ticketId)).thenReturn(Optional.empty());
+
+        assertThrows(NotFoundException.class,
+                () -> commentService.searchComments(ticketId, "advise", pageable, principal(authorId, Role.ADMIN)));
+        verify(commentRepository, never()).searchByTicketAndKeyword(anyLong(), any(), any(Pageable.class));
     }
 
     @Test

@@ -6,6 +6,7 @@ import com.wesleyedwards.ServiceLink.config.UserPrincipal;
 import com.wesleyedwards.ServiceLink.dtos.CommentRequestDto;
 import com.wesleyedwards.ServiceLink.dtos.CommentResponseDto;
 import com.wesleyedwards.ServiceLink.entities.User;
+import com.wesleyedwards.ServiceLink.exceptions.ForbiddenException;
 import com.wesleyedwards.ServiceLink.exceptions.NotFoundException;
 import com.wesleyedwards.ServiceLink.service.CommentService;
 import org.junit.jupiter.api.AfterEach;
@@ -19,6 +20,9 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.FilterType;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -82,28 +86,58 @@ class CommentControllerTest {
     }
 
     @Test
-    @DisplayName("GET /api/comments/ticket/{ticketId} returns 200 with the comment list")
+    @DisplayName("GET /api/comments/ticket/{ticketId} returns 200 with the PagedModel shape")
     void getCommentsForTicket_returns200() throws Exception {
         UUID authorId = UUID.randomUUID();
-        when(commentService.getCommentsForTicket(3L))
-                .thenReturn(List.of(sampleComment(1L, 3L, authorId)));
+        Page<CommentResponseDto> page = new PageImpl<>(List.of(sampleComment(1L, 3L, authorId)));
+        when(commentService.getCommentsForTicket(eq(3L), any(Pageable.class), any()))
+                .thenReturn(page);
 
         mockMvc.perform(get("/api/comments/ticket/{ticketId}", 3L))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].ticketId").value(3));
+                // VIA_DTO shape: content array + nested page metadata
+                .andExpect(jsonPath("$.content[0].ticketId").value(3))
+                .andExpect(jsonPath("$.page.totalElements").value(1));
 
-        verify(commentService).getCommentsForTicket(3L);
+        verify(commentService).getCommentsForTicket(eq(3L), any(Pageable.class), any());
     }
 
     @Test
     @DisplayName("GET /api/comments/ticket/{ticketId} returns 404 when the ticket is missing")
     void getCommentsForTicket_notFound_returns404() throws Exception {
-        when(commentService.getCommentsForTicket(99L))
+        when(commentService.getCommentsForTicket(eq(99L), any(Pageable.class), any()))
                 .thenThrow(new NotFoundException("Ticket 99 not found."));
 
         mockMvc.perform(get("/api/comments/ticket/{ticketId}", 99L))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.message").value("Ticket 99 not found."));
+    }
+
+    @Test
+    @DisplayName("GET /api/comments/ticket/{ticketId}/search forwards the keyword and returns the PagedModel shape")
+    void searchComments_forwardsKeyword() throws Exception {
+        UUID authorId = UUID.randomUUID();
+        Page<CommentResponseDto> page = new PageImpl<>(List.of(sampleComment(1L, 3L, authorId)));
+        when(commentService.searchComments(eq(3L), eq("advise"), any(Pageable.class), any()))
+                .thenReturn(page);
+
+        mockMvc.perform(get("/api/comments/ticket/{ticketId}/search", 3L).param("keyword", "advise"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[0].id").value(1))
+                .andExpect(jsonPath("$.page.totalElements").value(1));
+
+        verify(commentService).searchComments(eq(3L), eq("advise"), any(Pageable.class), any());
+    }
+
+    @Test
+    @DisplayName("GET /api/comments/ticket/{ticketId}/search returns 403 when the service forbids the caller")
+    void searchComments_forbidden_returns403() throws Exception {
+        when(commentService.searchComments(eq(3L), eq("advise"), any(Pageable.class), any()))
+                .thenThrow(new ForbiddenException("You are not allowed to view this ticket"));
+
+        mockMvc.perform(get("/api/comments/ticket/{ticketId}/search", 3L).param("keyword", "advise"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.message").value("You are not allowed to view this ticket"));
     }
 
     @Test

@@ -27,8 +27,8 @@ public interface TicketRepository extends JpaRepository<Ticket, Long> {
                                           @Param("requesterId") UUID requesterId);
 
     //This query is to handle pagination for large datasets
-    @Query("SELECT t FROM Ticket t WHERE (LOWER(t.title) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
-            "OR LOWER(t.description) LIKE LOWER(CONCAT('%', :keyword, '%'))) " +
+    @Query("SELECT t FROM Ticket t WHERE c.ticket.id = :ticketId " +
+            "AND LOWER(c.content) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
             "AND (:requesterId IS NULL OR t.requester.userId = :requesterId)")
     Page<Ticket> searchByKeyword(@Param("keyword") String keyword,
                                  @Param("requesterId") UUID requesterId,
