@@ -239,55 +239,111 @@ class TicketServiceImplTest {
     }
 
     @Test
-    @DisplayName("getAllTicketsByStatus filters by status")
-    void getAllTicketsByStatus_filters() {
+    @DisplayName("getAllTicketsByStatus is unscoped (null requester) for staff")
+    void getAllTicketsByStatus_staffUnscoped() {
         List<Ticket> tickets = List.of(ticket);
         List<TicketResponseDto> dtos = List.of(ticketDto);
-        when(ticketRepository.findAllTicketsByStatus(TicketStatus.NEW)).thenReturn(tickets);
+        when(ticketRepository.findAllTicketsByStatus(TicketStatus.NEW, null)).thenReturn(tickets);
         when(ticketMapper.entitiesToResponseDtos(tickets)).thenReturn(dtos);
 
-        assertSame(dtos, ticketService.getAllTicketsByStatus(TicketStatus.NEW));
+        assertSame(dtos, ticketService.getAllTicketsByStatus(TicketStatus.NEW, principal(userId, Role.ADMIN)));
     }
 
     @Test
-    @DisplayName("getAllTicketsByPriority filters by priority")
-    void getAllTicketsByPriority_filters() {
+    @DisplayName("getAllTicketsByStatus scopes to the caller's own tickets for a USER")
+    void getAllTicketsByStatus_userScoped() {
         List<Ticket> tickets = List.of(ticket);
         List<TicketResponseDto> dtos = List.of(ticketDto);
-        when(ticketRepository.findAllTicketsByPriority(TicketPriority.HIGH)).thenReturn(tickets);
+        when(ticketRepository.findAllTicketsByStatus(TicketStatus.NEW, userId)).thenReturn(tickets);
         when(ticketMapper.entitiesToResponseDtos(tickets)).thenReturn(dtos);
 
-        assertSame(dtos, ticketService.getAllTicketsByPriority(TicketPriority.HIGH));
+        assertSame(dtos, ticketService.getAllTicketsByStatus(TicketStatus.NEW, principal(userId, Role.USER)));
     }
 
     @Test
-    @DisplayName("searchTickets maps the page of results")
+    @DisplayName("getAllTicketsByPriority is unscoped (null requester) for staff")
+    void getAllTicketsByPriority_staffUnscoped() {
+        List<Ticket> tickets = List.of(ticket);
+        List<TicketResponseDto> dtos = List.of(ticketDto);
+        when(ticketRepository.findAllTicketsByPriority(TicketPriority.HIGH, null)).thenReturn(tickets);
+        when(ticketMapper.entitiesToResponseDtos(tickets)).thenReturn(dtos);
+
+        assertSame(dtos, ticketService.getAllTicketsByPriority(TicketPriority.HIGH, principal(userId, Role.AGENT)));
+    }
+
+    @Test
+    @DisplayName("getAllTicketsByPriority scopes to the caller's own tickets for a USER")
+    void getAllTicketsByPriority_userScoped() {
+        List<Ticket> tickets = List.of(ticket);
+        List<TicketResponseDto> dtos = List.of(ticketDto);
+        when(ticketRepository.findAllTicketsByPriority(TicketPriority.HIGH, userId)).thenReturn(tickets);
+        when(ticketMapper.entitiesToResponseDtos(tickets)).thenReturn(dtos);
+
+        assertSame(dtos, ticketService.getAllTicketsByPriority(TicketPriority.HIGH, principal(userId, Role.USER)));
+    }
+
+    @Test
+    @DisplayName("searchTickets maps the page of results, unscoped for staff")
     void searchTickets_mapsPage() {
         Pageable pageable = PageRequest.of(0, 10);
         Page<Ticket> page = new PageImpl<>(List.of(ticket));
-        when(ticketRepository.searchByKeyword("login", pageable)).thenReturn(page);
+        when(ticketRepository.searchByKeyword("login", null, pageable)).thenReturn(page);
         when(ticketMapper.entityToResponseDto(ticket)).thenReturn(ticketDto);
 
-        Page<TicketResponseDto> result = ticketService.searchTickets("login", pageable);
+        Page<TicketResponseDto> result =
+                ticketService.searchTickets("login", pageable, principal(userId, Role.ADMIN));
 
         assertEquals(1, result.getTotalElements());
         assertSame(ticketDto, result.getContent().get(0));
     }
 
     @Test
-    @DisplayName("advancedSearch maps the page of results")
+    @DisplayName("searchTickets scopes to the caller's own tickets for a USER")
+    void searchTickets_userScoped() {
+        Pageable pageable = PageRequest.of(0, 10);
+        Page<Ticket> page = new PageImpl<>(List.of(ticket));
+        when(ticketRepository.searchByKeyword("login", userId, pageable)).thenReturn(page);
+        when(ticketMapper.entityToResponseDto(ticket)).thenReturn(ticketDto);
+
+        Page<TicketResponseDto> result =
+                ticketService.searchTickets("login", pageable, principal(userId, Role.USER));
+
+        assertEquals(1, result.getTotalElements());
+        verify(ticketRepository).searchByKeyword("login", userId, pageable);
+    }
+
+    @Test
+    @DisplayName("advancedSearch maps the page of results, unscoped for staff")
     void advancedSearch_mapsPage() {
         Pageable pageable = PageRequest.of(0, 10);
         Page<Ticket> page = new PageImpl<>(List.of(ticket));
-        when(ticketRepository.advancedSearch("login", TicketStatus.NEW, TicketPriority.HIGH, pageable))
+        when(ticketRepository.advancedSearch("login", TicketStatus.NEW, TicketPriority.HIGH, null, pageable))
                 .thenReturn(page);
         when(ticketMapper.entityToResponseDto(ticket)).thenReturn(ticketDto);
 
         Page<TicketResponseDto> result =
-                ticketService.advancedSearch("login", TicketStatus.NEW, TicketPriority.HIGH, pageable);
+                ticketService.advancedSearch("login", TicketStatus.NEW, TicketPriority.HIGH, pageable,
+                        principal(userId, Role.ADMIN));
 
         assertEquals(1, result.getTotalElements());
         assertSame(ticketDto, result.getContent().get(0));
+    }
+
+    @Test
+    @DisplayName("advancedSearch scopes to the caller's own tickets for a USER")
+    void advancedSearch_userScoped() {
+        Pageable pageable = PageRequest.of(0, 10);
+        Page<Ticket> page = new PageImpl<>(List.of(ticket));
+        when(ticketRepository.advancedSearch("login", TicketStatus.NEW, TicketPriority.HIGH, userId, pageable))
+                .thenReturn(page);
+        when(ticketMapper.entityToResponseDto(ticket)).thenReturn(ticketDto);
+
+        Page<TicketResponseDto> result =
+                ticketService.advancedSearch("login", TicketStatus.NEW, TicketPriority.HIGH, pageable,
+                        principal(userId, Role.USER));
+
+        assertEquals(1, result.getTotalElements());
+        verify(ticketRepository).advancedSearch("login", TicketStatus.NEW, TicketPriority.HIGH, userId, pageable);
     }
 
     @Test

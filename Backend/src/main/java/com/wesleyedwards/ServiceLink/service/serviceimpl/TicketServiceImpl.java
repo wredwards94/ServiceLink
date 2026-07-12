@@ -76,24 +76,26 @@ public class TicketServiceImpl implements TicketService {
     }
 
     @Override
-    public List<TicketResponseDto> getAllTicketsByStatus(TicketStatus status) {
-        return ticketMapper.entitiesToResponseDtos(ticketRepository.findAllTicketsByStatus(status));
+    public List<TicketResponseDto> getAllTicketsByStatus(TicketStatus status, UserPrincipal actor) {
+        return ticketMapper.entitiesToResponseDtos(
+                ticketRepository.findAllTicketsByStatus(status, requesterScope(actor)));
     }
 
     @Override
-    public List<TicketResponseDto> getAllTicketsByPriority(TicketPriority priority) {
-        return ticketMapper.entitiesToResponseDtos(ticketRepository.findAllTicketsByPriority(priority));
+    public List<TicketResponseDto> getAllTicketsByPriority(TicketPriority priority, UserPrincipal actor) {
+        return ticketMapper.entitiesToResponseDtos(
+                ticketRepository.findAllTicketsByPriority(priority, requesterScope(actor)));
     }
 
     @Override
-    public Page<TicketResponseDto> searchTickets(String keyword, Pageable pageable) {
-        return ticketRepository.searchByKeyword(keyword, pageable)
+    public Page<TicketResponseDto> searchTickets(String keyword, Pageable pageable, UserPrincipal actor) {
+        return ticketRepository.searchByKeyword(keyword, requesterScope(actor), pageable)
                 .map(ticketMapper::entityToResponseDto);
     }
 
     @Override
-    public Page<TicketResponseDto> advancedSearch(String keyword, TicketStatus status, TicketPriority priority, Pageable pageable) {
-        return ticketRepository.advancedSearch(keyword, status, priority, pageable)
+    public Page<TicketResponseDto> advancedSearch(String keyword, TicketStatus status, TicketPriority priority, Pageable pageable, UserPrincipal actor) {
+        return ticketRepository.advancedSearch(keyword, status, priority, requesterScope(actor), pageable)
                 .map(ticketMapper::entityToResponseDto);
     }
 
@@ -135,6 +137,12 @@ public class TicketServiceImpl implements TicketService {
 
     private boolean isStaff(UserPrincipal actor) {
         return actor.getRole() == Role.ADMIN || actor.getRole() == Role.AGENT;
+    }
+
+    // Repository scope for requester-filtered queries: null for staff (unscoped),
+    // the actor's own id for a plain USER.
+    private UUID requesterScope(UserPrincipal actor) {
+        return isStaff(actor) ? null : actor.getUserId();
     }
 
     // A USER may only view a ticket they requested; staff may view any ticket.

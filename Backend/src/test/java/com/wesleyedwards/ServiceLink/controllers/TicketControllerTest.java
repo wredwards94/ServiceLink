@@ -165,32 +165,32 @@ class TicketControllerTest {
     @Test
     @DisplayName("GET /api/tickets/status/{status} binds the enum path variable")
     void getByStatus_bindsEnum() throws Exception {
-        when(ticketService.getAllTicketsByStatus(TicketStatus.NEW))
+        when(ticketService.getAllTicketsByStatus(eq(TicketStatus.NEW), any()))
                 .thenReturn(List.of(sampleTicket(1L)));
 
         mockMvc.perform(get("/api/tickets/status/{status}", "NEW"))
                 .andExpect(status().isOk());
 
-        verify(ticketService).getAllTicketsByStatus(TicketStatus.NEW);
+        verify(ticketService).getAllTicketsByStatus(eq(TicketStatus.NEW), any());
     }
 
     @Test
     @DisplayName("GET /api/tickets/priority/{priority} binds the enum path variable")
     void getByPriority_bindsEnum() throws Exception {
-        when(ticketService.getAllTicketsByPriority(TicketPriority.HIGH))
+        when(ticketService.getAllTicketsByPriority(eq(TicketPriority.HIGH), any()))
                 .thenReturn(List.of(sampleTicket(1L)));
 
         mockMvc.perform(get("/api/tickets/priority/{priority}", "HIGH"))
                 .andExpect(status().isOk());
 
-        verify(ticketService).getAllTicketsByPriority(TicketPriority.HIGH);
+        verify(ticketService).getAllTicketsByPriority(eq(TicketPriority.HIGH), any());
     }
 
     @Test
     @DisplayName("GET /api/tickets/search forwards the keyword and returns the PagedModel shape")
     void searchTickets_forwardsKeyword() throws Exception {
         Page<TicketResponseDto> page = new PageImpl<>(List.of(sampleTicket(1L)));
-        when(ticketService.searchTickets(eq("login"), any(Pageable.class))).thenReturn(page);
+        when(ticketService.searchTickets(eq("login"), any(Pageable.class), any())).thenReturn(page);
 
         mockMvc.perform(get("/api/tickets/search").param("keyword", "login"))
                 .andExpect(status().isOk())
@@ -198,7 +198,7 @@ class TicketControllerTest {
                 .andExpect(jsonPath("$.content[0].id").value(1))
                 .andExpect(jsonPath("$.page.totalElements").value(1));
 
-        verify(ticketService).searchTickets(eq("login"), any(Pageable.class));
+        verify(ticketService).searchTickets(eq("login"), any(Pageable.class), any());
     }
 
     @Test

@@ -24,13 +24,13 @@ public interface TicketService {
 
     TicketResponseDto updateTicket(Long id, TicketUpdateDto updatedTicket);
 
-    List<TicketResponseDto> getAllTicketsByStatus(TicketStatus status);
+    List<TicketResponseDto> getAllTicketsByStatus(TicketStatus status, UserPrincipal actor);
 
-    List<TicketResponseDto> getAllTicketsByPriority(TicketPriority priority);
+    List<TicketResponseDto> getAllTicketsByPriority(TicketPriority priority, UserPrincipal actor);
 
-    Page<TicketResponseDto> searchTickets(String keyword, Pageable pageable);
+    Page<TicketResponseDto> searchTickets(String keyword, Pageable pageable, UserPrincipal actor);
 
-    Page<TicketResponseDto> advancedSearch(String keyword, TicketStatus status, TicketPriority priority, Pageable pageable);
+    Page<TicketResponseDto> advancedSearch(String keyword, TicketStatus status, TicketPriority priority, Pageable pageable, UserPrincipal actor);
 
     TicketResponseDto assignTicketToUser(Long id, UUID userId);
 

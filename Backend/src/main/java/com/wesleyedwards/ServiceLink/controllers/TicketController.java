@@ -60,13 +60,13 @@ public class TicketController {
     }
 
     @GetMapping("/status/{status}")
-    public ResponseEntity<List<TicketResponseDto>> getAllTicketByStatus(@PathVariable TicketStatus status) {
-        return ResponseEntity.ok(ticketService.getAllTicketsByStatus(status));
+    public ResponseEntity<List<TicketResponseDto>> getAllTicketByStatus(@PathVariable TicketStatus status, @AuthenticationPrincipal UserPrincipal actor) {
+        return ResponseEntity.ok(ticketService.getAllTicketsByStatus(status, actor));
     }
 
     @GetMapping("/priority/{priority}")
-    public ResponseEntity<List<TicketResponseDto>> getAllTicketsByPriority(@PathVariable TicketPriority priority) {
-        return ResponseEntity.ok(ticketService.getAllTicketsByPriority(priority));
+    public ResponseEntity<List<TicketResponseDto>> getAllTicketsByPriority(@PathVariable TicketPriority priority, @AuthenticationPrincipal UserPrincipal actor) {
+        return ResponseEntity.ok(ticketService.getAllTicketsByPriority(priority, actor));
     }
 
     @GetMapping("/search")
@@ -74,9 +74,10 @@ public class TicketController {
             @RequestParam String keyword,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
-            @RequestParam(defaultValue = "createdAt") String sortBy) {
+            @RequestParam(defaultValue = "createdAt") String sortBy,
+            @AuthenticationPrincipal UserPrincipal actor) {
         Pageable pageable = PageRequest.of(page, size, Sort.by(sortBy).descending());
-        return ResponseEntity.ok(ticketService.searchTickets(keyword, pageable));
+        return ResponseEntity.ok(ticketService.searchTickets(keyword, pageable, actor));
     }
 
     @GetMapping("/search/advanced")
@@ -86,9 +87,10 @@ public class TicketController {
             @RequestParam(required = false) TicketPriority priority,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
-            @RequestParam(defaultValue = "createdAt") String sortBy) {
+            @RequestParam(defaultValue = "createdAt") String sortBy,
+            @AuthenticationPrincipal UserPrincipal actor) {
         Pageable pageable = PageRequest.of(page, size, Sort.by(sortBy).descending());
-        return ResponseEntity.ok(ticketService.advancedSearch(keyword, status, priority, pageable));
+        return ResponseEntity.ok(ticketService.advancedSearch(keyword, status, priority, pageable, actor));
     }
 
     @PutMapping("/{id}/assign/{userId}")
