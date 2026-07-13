@@ -55,8 +55,8 @@ Add a timeline entity recording status changes, reassignments, and field edits (
 **Attachments.**
 File and screenshot uploads on tickets and comments — close to essential for IT support and currently absent.
 
-**Internal vs. public comments.**
-Add a visibility flag so agents can leave notes the requester cannot see. (The `Comment` entity is the natural home.)
+**Internal vs. public comments.** ✅ *Done.*
+Added an `internal` boolean to `Comment` (default public). Only staff can create internal comments — `addCommentToTicket` forces `internal = actor.isStaff() && request.internal()`, so a USER's `internal=true` is ignored. Reads filter it out for non-staff: `getCommentsForTicket` and `searchComments` branch on `isStaff()` (staff → all; requester → `...InternalFalse` variants), and both also gate ticket ownership via `assertCanView` (a USER only sees comments on their own tickets, 403 otherwise). Exposed on `CommentResponseDto`. Covered by internal-filter, view-gate, and create-guard tests.
 
 **Ownership-based authorization.** ✅ *Done.*
 Security was role-based only. Layered in ownership checks where "who owns it" matters — method-level logic (service-layer guards throwing `ForbiddenException` → 403), not just `requestMatchers` rules:
