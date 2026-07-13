@@ -11,5 +11,6 @@ public record CommentResponseDto(Long id,
                                  Long ticketId,
                                  String content,
                                  @JsonFormat(pattern = "MM/dd/yyyy hh:mm a")
-                                 LocalDateTime createdAt) {
+                                 LocalDateTime createdAt,
+                                 boolean internal) {
 }

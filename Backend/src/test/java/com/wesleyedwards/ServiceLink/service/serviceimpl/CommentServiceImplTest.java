@@ -32,8 +32,10 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.never;
@@ -57,6 +59,7 @@ class CommentServiceImplTest {
     private CommentResponseDto commentDto;
     private final Long ticketId = 1L;
     private final Long commentId = 7L;
+    private final Pageable pageable = PageRequest.of(0, 10);
     private UUID authorId;
 
     @BeforeEach
@@ -71,7 +74,7 @@ class CommentServiceImplTest {
         comment.setContent("Please advise");
         comment.setAuthor(user);
         comment.setCreatedAt(LocalDateTime.now()); // within the edit window by default
-        commentDto = new CommentResponseDto(commentId, authorId, "John Doe", ticketId, "Please advise", null);
+        commentDto = new CommentResponseDto(commentId, authorId, "John Doe", ticketId, "Please advise", null, false);
     }
 
     private UserPrincipal principal(UUID id, Role role) {
@@ -81,16 +84,19 @@ class CommentServiceImplTest {
         return new UserPrincipal(u);
     }
 
+    // ---------- addCommentToTicket ----------
+
     @Test
-    @DisplayName("addCommentToTicket links the ticket and author then saves")
+    @DisplayName("addCommentToTicket links the ticket + author and saves")
     void addCommentToTicket_links() {
-        CommentRequestDto request = new CommentRequestDto("Please advise");
+        CommentRequestDto request = new CommentRequestDto("Please advise", false);
         when(ticketRepository.findById(ticketId)).thenReturn(Optional.of(ticket));
         when(userRepository.findById(authorId)).thenReturn(Optional.of(user));
         when(commentMapper.requestDtoToEntity(request)).thenReturn(comment);
         when(commentMapper.entityToResponseDto(comment)).thenReturn(commentDto);
 
-        CommentResponseDto result = commentService.addCommentToTicket(ticketId, authorId, request);
+        CommentResponseDto result =
+                commentService.addCommentToTicket(ticketId, principal(authorId, Role.USER), request);
 
         assertSame(commentDto, result);
         assertSame(ticket, comment.getTicket());
@@ -99,32 +105,61 @@ class CommentServiceImplTest {
     }
 
     @Test
+    @DisplayName("addCommentToTicket forces a non-staff comment public even if internal=true")
+    void addCommentToTicket_userInternalForcedPublic() {
+        CommentRequestDto request = new CommentRequestDto("Please advise", true);
+        when(ticketRepository.findById(ticketId)).thenReturn(Optional.of(ticket));
+        when(userRepository.findById(authorId)).thenReturn(Optional.of(user));
+        when(commentMapper.requestDtoToEntity(request)).thenReturn(comment);
+        when(commentMapper.entityToResponseDto(comment)).thenReturn(commentDto);
+
+        commentService.addCommentToTicket(ticketId, principal(authorId, Role.USER), request);
+
+        assertFalse(comment.isInternal());
+    }
+
+    @Test
+    @DisplayName("addCommentToTicket honours internal=true for staff")
+    void addCommentToTicket_staffInternalHonoured() {
+        CommentRequestDto request = new CommentRequestDto("Internal note", true);
+        when(ticketRepository.findById(ticketId)).thenReturn(Optional.of(ticket));
+        when(userRepository.findById(authorId)).thenReturn(Optional.of(user));
+        when(commentMapper.requestDtoToEntity(request)).thenReturn(comment);
+        when(commentMapper.entityToResponseDto(comment)).thenReturn(commentDto);
+
+        commentService.addCommentToTicket(ticketId, principal(authorId, Role.AGENT), request);
+
+        assertTrue(comment.isInternal());
+    }
+
+    @Test
     @DisplayName("addCommentToTicket throws when the ticket does not exist")
     void addCommentToTicket_ticketMissing() {
-        CommentRequestDto request = new CommentRequestDto("Please advise");
+        CommentRequestDto request = new CommentRequestDto("Please advise", false);
         when(ticketRepository.findById(ticketId)).thenReturn(Optional.empty());
 
         assertThrows(NotFoundException.class,
-                () -> commentService.addCommentToTicket(ticketId, authorId, request));
+                () -> commentService.addCommentToTicket(ticketId, principal(authorId, Role.USER), request));
         verify(commentRepository, never()).saveAndFlush(any());
     }
 
     @Test
     @DisplayName("addCommentToTicket throws when the author does not exist")
     void addCommentToTicket_authorMissing() {
-        CommentRequestDto request = new CommentRequestDto("Please advise");
+        CommentRequestDto request = new CommentRequestDto("Please advise", false);
         when(ticketRepository.findById(ticketId)).thenReturn(Optional.of(ticket));
         when(userRepository.findById(authorId)).thenReturn(Optional.empty());
 
         assertThrows(NotFoundException.class,
-                () -> commentService.addCommentToTicket(ticketId, authorId, request));
+                () -> commentService.addCommentToTicket(ticketId, principal(authorId, Role.USER), request));
         verify(commentRepository, never()).saveAndFlush(any());
     }
 
+    // ---------- getCommentsForTicket ----------
+
     @Test
-    @DisplayName("getCommentsForTicket returns a mapped page for staff")
-    void getCommentsForTicket_staffSees() {
-        Pageable pageable = PageRequest.of(0, 10);
+    @DisplayName("getCommentsForTicket returns every comment (unfiltered) for staff")
+    void getCommentsForTicket_staffSeesAll() {
         Page<Comment> page = new PageImpl<>(List.of(comment));
         when(ticketRepository.findById(ticketId)).thenReturn(Optional.of(ticket));
         when(commentRepository.findAllByTicketId(ticketId, pageable)).thenReturn(page);
@@ -135,25 +170,26 @@ class CommentServiceImplTest {
 
         assertEquals(1, result.getTotalElements());
         assertSame(commentDto, result.getContent().get(0));
+        verify(commentRepository, never()).findAllByTicketIdAndInternalFalse(anyLong(), any(Pageable.class));
     }
 
     @Test
-    @DisplayName("getCommentsForTicket returns the page for the ticket's requester")
-    void getCommentsForTicket_ownerSees() {
+    @DisplayName("getCommentsForTicket returns only public comments for the requester")
+    void getCommentsForTicket_requesterSeesPublicOnly() {
         UUID requesterId = UUID.randomUUID();
         User requester = new User();
         requester.setUserId(requesterId);
         ticket.setRequester(requester);
-        Pageable pageable = PageRequest.of(0, 10);
         Page<Comment> page = new PageImpl<>(List.of(comment));
         when(ticketRepository.findById(ticketId)).thenReturn(Optional.of(ticket));
-        when(commentRepository.findAllByTicketId(ticketId, pageable)).thenReturn(page);
+        when(commentRepository.findAllByTicketIdAndInternalFalse(ticketId, pageable)).thenReturn(page);
         when(commentMapper.entityToResponseDto(comment)).thenReturn(commentDto);
 
         Page<CommentResponseDto> result =
                 commentService.getCommentsForTicket(ticketId, pageable, principal(requesterId, Role.USER));
 
         assertEquals(1, result.getTotalElements());
+        verify(commentRepository, never()).findAllByTicketId(anyLong(), any(Pageable.class));
     }
 
     @Test
@@ -162,29 +198,28 @@ class CommentServiceImplTest {
         User requester = new User();
         requester.setUserId(UUID.randomUUID()); // someone else
         ticket.setRequester(requester);
-        Pageable pageable = PageRequest.of(0, 10);
         when(ticketRepository.findById(ticketId)).thenReturn(Optional.of(ticket));
 
         assertThrows(ForbiddenException.class,
                 () -> commentService.getCommentsForTicket(ticketId, pageable, principal(UUID.randomUUID(), Role.USER)));
         verify(commentRepository, never()).findAllByTicketId(anyLong(), any(Pageable.class));
+        verify(commentRepository, never()).findAllByTicketIdAndInternalFalse(anyLong(), any(Pageable.class));
     }
 
     @Test
     @DisplayName("getCommentsForTicket throws when the ticket does not exist")
     void getCommentsForTicket_ticketMissing() {
-        Pageable pageable = PageRequest.of(0, 10);
         when(ticketRepository.findById(ticketId)).thenReturn(Optional.empty());
 
         assertThrows(NotFoundException.class,
                 () -> commentService.getCommentsForTicket(ticketId, pageable, principal(authorId, Role.ADMIN)));
-        verify(commentRepository, never()).findAllByTicketId(anyLong(), any(Pageable.class));
     }
 
+    // ---------- searchComments ----------
+
     @Test
-    @DisplayName("searchComments returns a mapped page for staff")
-    void searchComments_mapsPage() {
-        Pageable pageable = PageRequest.of(0, 10);
+    @DisplayName("searchComments searches all comments (unfiltered) for staff")
+    void searchComments_staffSearchesAll() {
         Page<Comment> page = new PageImpl<>(List.of(comment));
         when(ticketRepository.findById(ticketId)).thenReturn(Optional.of(ticket));
         when(commentRepository.searchByTicketAndKeyword(ticketId, "advise", pageable)).thenReturn(page);
@@ -194,27 +229,27 @@ class CommentServiceImplTest {
                 commentService.searchComments(ticketId, "advise", pageable, principal(UUID.randomUUID(), Role.ADMIN));
 
         assertEquals(1, result.getTotalElements());
-        assertSame(commentDto, result.getContent().get(0));
-        verify(commentRepository).searchByTicketAndKeyword(ticketId, "advise", pageable);
+        verify(commentRepository, never())
+                .searchByTicketAndKeywordAndInternalFalse(anyLong(), any(), any(Pageable.class));
     }
 
     @Test
-    @DisplayName("searchComments allows the ticket's requester")
-    void searchComments_ownerAllowed() {
+    @DisplayName("searchComments returns only public comments for the requester")
+    void searchComments_requesterSearchesPublicOnly() {
         UUID requesterId = UUID.randomUUID();
         User requester = new User();
         requester.setUserId(requesterId);
         ticket.setRequester(requester);
-        Pageable pageable = PageRequest.of(0, 10);
         Page<Comment> page = new PageImpl<>(List.of(comment));
         when(ticketRepository.findById(ticketId)).thenReturn(Optional.of(ticket));
-        when(commentRepository.searchByTicketAndKeyword(ticketId, "advise", pageable)).thenReturn(page);
+        when(commentRepository.searchByTicketAndKeywordAndInternalFalse(ticketId, "advise", pageable)).thenReturn(page);
         when(commentMapper.entityToResponseDto(comment)).thenReturn(commentDto);
 
         Page<CommentResponseDto> result =
                 commentService.searchComments(ticketId, "advise", pageable, principal(requesterId, Role.USER));
 
         assertEquals(1, result.getTotalElements());
+        verify(commentRepository, never()).searchByTicketAndKeyword(anyLong(), any(), any(Pageable.class));
     }
 
     @Test
@@ -223,24 +258,24 @@ class CommentServiceImplTest {
         User requester = new User();
         requester.setUserId(UUID.randomUUID()); // someone else
         ticket.setRequester(requester);
-        Pageable pageable = PageRequest.of(0, 10);
         when(ticketRepository.findById(ticketId)).thenReturn(Optional.of(ticket));
 
         assertThrows(ForbiddenException.class,
                 () -> commentService.searchComments(ticketId, "advise", pageable, principal(UUID.randomUUID(), Role.USER)));
         verify(commentRepository, never()).searchByTicketAndKeyword(anyLong(), any(), any(Pageable.class));
+        verify(commentRepository, never()).searchByTicketAndKeywordAndInternalFalse(anyLong(), any(), any(Pageable.class));
     }
 
     @Test
     @DisplayName("searchComments throws when the ticket does not exist")
     void searchComments_ticketMissing() {
-        Pageable pageable = PageRequest.of(0, 10);
         when(ticketRepository.findById(ticketId)).thenReturn(Optional.empty());
 
         assertThrows(NotFoundException.class,
                 () -> commentService.searchComments(ticketId, "advise", pageable, principal(authorId, Role.ADMIN)));
-        verify(commentRepository, never()).searchByTicketAndKeyword(anyLong(), any(), any(Pageable.class));
     }
+
+    // ---------- deleteComment ----------
 
     @Test
     @DisplayName("deleteComment removes an existing comment")
@@ -261,10 +296,12 @@ class CommentServiceImplTest {
         verify(commentRepository, never()).deleteById(anyLong());
     }
 
+    // ---------- updateComment ----------
+
     @Test
     @DisplayName("updateComment lets the author edit within the window and saves")
     void updateComment_authorWithinWindow() {
-        CommentRequestDto update = new CommentRequestDto("Updated content");
+        CommentRequestDto update = new CommentRequestDto("Updated content", false);
         when(commentRepository.findById(commentId)).thenReturn(Optional.of(comment));
         when(commentRepository.saveAndFlush(comment)).thenReturn(comment);
         when(commentMapper.entityToResponseDto(comment)).thenReturn(commentDto);
@@ -279,7 +316,7 @@ class CommentServiceImplTest {
     @DisplayName("updateComment forbids the author once the edit window has passed")
     void updateComment_windowExpired() {
         comment.setCreatedAt(LocalDateTime.now().minus(Duration.ofMinutes(20)));
-        CommentRequestDto update = new CommentRequestDto("Updated content");
+        CommentRequestDto update = new CommentRequestDto("Updated content", false);
         when(commentRepository.findById(commentId)).thenReturn(Optional.of(comment));
 
         assertThrows(ForbiddenException.class,
@@ -290,7 +327,7 @@ class CommentServiceImplTest {
     @Test
     @DisplayName("updateComment forbids a USER who is not the author")
     void updateComment_notAuthorForbidden() {
-        CommentRequestDto update = new CommentRequestDto("Updated content");
+        CommentRequestDto update = new CommentRequestDto("Updated content", false);
         when(commentRepository.findById(commentId)).thenReturn(Optional.of(comment));
 
         assertThrows(ForbiddenException.class,
@@ -302,7 +339,7 @@ class CommentServiceImplTest {
     @DisplayName("updateComment lets staff edit any comment regardless of the window")
     void updateComment_staffBypassesWindow() {
         comment.setCreatedAt(LocalDateTime.now().minus(Duration.ofMinutes(20)));
-        CommentRequestDto update = new CommentRequestDto("Updated content");
+        CommentRequestDto update = new CommentRequestDto("Updated content", false);
         when(commentRepository.findById(commentId)).thenReturn(Optional.of(comment));
         when(commentRepository.saveAndFlush(comment)).thenReturn(comment);
         when(commentMapper.entityToResponseDto(comment)).thenReturn(commentDto);
@@ -315,7 +352,7 @@ class CommentServiceImplTest {
     @Test
     @DisplayName("updateComment throws when the comment does not exist")
     void updateComment_missing() {
-        CommentRequestDto update = new CommentRequestDto("Updated content");
+        CommentRequestDto update = new CommentRequestDto("Updated content", false);
         when(commentRepository.findById(commentId)).thenReturn(Optional.empty());
 
         assertThrows(NotFoundException.class,

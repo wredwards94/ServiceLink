@@ -36,17 +36,16 @@ public class CommentServiceImpl implements CommentService {
 
     @Override
     @Transactional
-    public CommentResponseDto addCommentToTicket(Long ticketId, UUID authorId, CommentRequestDto commentRequest) {
+    public CommentResponseDto addCommentToTicket(Long ticketId, UserPrincipal actor, CommentRequestDto commentRequest) {
         Ticket foundTicket = checkTicketExists(ticketId);
-        User foundUser = checkUserExists(authorId);
+        User foundUser = checkUserExists(actor.getUserId());
         Comment newComment = commentMapper.requestDtoToEntity(commentRequest);
 
         newComment.setTicket(foundTicket);
         newComment.setAuthor(foundUser);
+        newComment.setInternal(actor.isStaff() && commentRequest.internal());
 
         commentRepository.saveAndFlush(newComment);
-
-        ticketRepository.saveAndFlush(foundTicket);
 
         return commentMapper.entityToResponseDto(newComment);
     }
@@ -55,7 +54,8 @@ public class CommentServiceImpl implements CommentService {
     public Page<CommentResponseDto> getCommentsForTicket(Long ticketId,  Pageable pageable, UserPrincipal actor) {
         assertCanView(actor, checkTicketExists(ticketId));
 
-        return commentRepository.findAllByTicketId(ticketId, pageable).map(commentMapper::entityToResponseDto);
+        return actor.isStaff() ? commentRepository.findAllByTicketId(ticketId, pageable).map(commentMapper::entityToResponseDto)
+                : commentRepository.findAllByTicketIdAndInternalFalse(ticketId, pageable).map(commentMapper::entityToResponseDto);
     }
 
     @Override
@@ -85,15 +85,15 @@ public class CommentServiceImpl implements CommentService {
     @Override
     public Page<CommentResponseDto> searchComments(Long ticketId, String keyword, Pageable pageable, UserPrincipal actor) {
         assertCanView(actor, checkTicketExists(ticketId));
-        return commentRepository.searchByTicketAndKeyword(ticketId, keyword, pageable).map(commentMapper::entityToResponseDto);
+        return actor.isStaff() ?
+                commentRepository.searchByTicketAndKeyword(ticketId, keyword, pageable).map(commentMapper::entityToResponseDto)
+                : commentRepository.searchByTicketAndKeywordAndInternalFalse(ticketId, keyword, pageable).map(commentMapper::entityToResponseDto);
     }
 
     private Ticket checkTicketExists(Long id) {
         Optional<Ticket> optionalTicket = ticketRepository.findById(id);
 
         if(optionalTicket.isEmpty()) throw new NotFoundException("Ticket " + id + " not found.");
-
-//        System.out.println(optionalTicket.get().getAssignedTo().getUserId());
 
         return optionalTicket.get();
     }

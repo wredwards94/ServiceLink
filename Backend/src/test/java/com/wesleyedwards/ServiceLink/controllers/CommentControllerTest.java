@@ -56,7 +56,7 @@ class CommentControllerTest {
     void clearContext() { SecurityContextHolder.clearContext(); }
 
     private CommentResponseDto sampleComment(Long id, Long ticketId, UUID authorId) {
-        return new CommentResponseDto(id, authorId, "John Doe", ticketId, "Please advise", null);
+        return new CommentResponseDto(id, authorId, "John Doe", ticketId, "Please advise", null, false);
     }
 
     @Test
@@ -70,7 +70,7 @@ class CommentControllerTest {
                 new UsernamePasswordAuthenticationToken(
                         new UserPrincipal(u), null, List.of()));
 
-        when(commentService.addCommentToTicket(eq(3L), eq(authorId), any(CommentRequestDto.class)))
+        when(commentService.addCommentToTicket(eq(3L), any(UserPrincipal.class), any(CommentRequestDto.class)))
                 .thenReturn(sampleComment(1L, 3L, authorId));
 
         String body = "{\"content\": \"Please advise\"}";
@@ -82,7 +82,7 @@ class CommentControllerTest {
                 .andExpect(jsonPath("$.id").value(1))
                 .andExpect(jsonPath("$.ticketId").value(3));
 
-        verify(commentService).addCommentToTicket(eq(3L), eq(authorId), any(CommentRequestDto.class));
+        verify(commentService).addCommentToTicket(eq(3L), any(UserPrincipal.class), any(CommentRequestDto.class));
     }
 
     @Test
@@ -151,7 +151,7 @@ class CommentControllerTest {
                 new UsernamePasswordAuthenticationToken(
                         new UserPrincipal(u), null, List.of()));
 
-        when(commentService.addCommentToTicket(eq(3L), eq(authorId), any(CommentRequestDto.class)))
+        when(commentService.addCommentToTicket(eq(3L), any(UserPrincipal.class), any(CommentRequestDto.class)))
                 .thenThrow(new NotFoundException("User: " + authorId + " does not exist."));
 
         String body = "{\"content\": \"Please advise\"}";

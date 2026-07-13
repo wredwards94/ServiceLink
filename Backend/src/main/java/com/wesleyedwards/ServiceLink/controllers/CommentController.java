@@ -24,9 +24,9 @@ public class CommentController {
 
     @PostMapping("/ticket/{ticketId}")
     public ResponseEntity<CommentResponseDto> addComment(@PathVariable Long ticketId,
-                                                         @AuthenticationPrincipal UserPrincipal user,
+                                                         @AuthenticationPrincipal UserPrincipal actor,
                                                          @Valid @RequestBody CommentRequestDto commentRequest) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(commentService.addCommentToTicket(ticketId, user.getUserId(),
+        return ResponseEntity.status(HttpStatus.CREATED).body(commentService.addCommentToTicket(ticketId, actor,
                 commentRequest));
     }
 

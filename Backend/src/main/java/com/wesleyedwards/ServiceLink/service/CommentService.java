@@ -9,7 +9,7 @@ import org.springframework.data.domain.Pageable;
 import java.util.UUID;
 
 public interface CommentService {
-    CommentResponseDto addCommentToTicket(Long ticketId, UUID authorId, CommentRequestDto commentRequest);
+    CommentResponseDto addCommentToTicket(Long ticketId, UserPrincipal actor, CommentRequestDto commentRequest);
 
     Page<CommentResponseDto> getCommentsForTicket(Long ticketId, Pageable pageable, UserPrincipal actor);
 
