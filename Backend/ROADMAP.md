@@ -67,8 +67,10 @@ Security was role-based only. Layered in ownership checks where "who owns it" ma
 
 Depended on Phase 1 (identity from JWT).
 
-**Self-assignment & bulk actions.**
-Assign-to-me, unassign, and bulk status/assignment changes to speed up queue management.
+**Self-assignment & bulk actions.** ✅ *Done (bulk).*
+Added **bulk status change** (`PUT /api/tickets/bulk/status`) and **bulk assign** (`PATCH /api/tickets/bulk/assign`), both with **partial-success** semantics: per-item try/catch returning `BulkResultDto(succeeded, failed)`, deliberately *not* wrapped in a single `@Transactional` (each `saveAndFlush` auto-commits so one failure doesn't roll back the batch). Bulk status reuses the `canTransitionTo` guard and reports both bad-id and illegal-transition failures; bulk assign validates the assignee once (missing assignee → whole-request 404) and reports per-item bad-ids. Staff-only via existing URL rules. Covered by all-succeed / partial / missing-assignee service tests + controller wiring tests.
+
+*Deferred:* explicit **assign-to-me** was dropped (an agent can already self-assign via the existing `PUT /{id}/assign/{userId}` with their own id — no new capability). **Unassign** (`assignedTo = null`) not yet added; small follow-up if wanted.
 
 **Comment search & pagination.** ✅ *Done.*
 Brought comments to parity with tickets: `GET /api/comments/ticket/{ticketId}` is now paginated (`Page` + `page`/`size`/`sortBy` params, PagedModel `$.content`/`$.page` shape) and `GET /api/comments/ticket/{ticketId}/search` does a case-insensitive keyword search over `content`, scoped to one ticket (repo-level JPQL, correct pagination totals). Both are ownership-guarded: staff or the ticket's requester, 403 otherwise — this also closed a pre-existing gap where **any** USER could read the comments on **any** ticket. Covered by staff/owner/forbidden/missing service tests and controller tests (param forwarding, PagedModel shape, 403). *Open niggles: default sort is `createdAt` descending (consider ascending for conversation order); minor cleanups (leading slashes on the new mappings, orphaned non-paginated `findAllByTicketId`, unused imports).*

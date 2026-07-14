@@ -64,6 +64,8 @@ A distilled record of the Cowork session working on ServiceLink: project context
 - **Ticket status is a state machine.** `TicketStatus.canTransitionTo(target)` (switch-based). New tickets default to `NEW` (entity field initializer + `status` removed from create/update DTOs). Status changes only via `PATCH /api/tickets/{id}/status` (validated); illegal transitions → 400.
 - **Ownership authorization is service-layer** (not `@PreAuthorize`/SpEL) for testability. Policy: modify tickets = admin + **any** agent (already covered by URL rules); reads restricted so a USER sees only their own tickets. Profiles: edit = self or ADMIN (agents excluded). Comments: authors can **edit** their own within a **15-minute window** (staff bypass); delete stays staff-only.
 - **Pagination:** `@EnableSpringDataWebSupport(pageSerializationMode = VIA_DTO)` on the main class → stable `PagedModel` JSON (content at `$.content`, metadata under `$.page`). Clients must read `$.page.totalElements`, not flat `$.totalElements`.
+- **Internal vs. public comments.** `internal` boolean on `Comment` (default public). Only staff can set it — `addCommentToTicket` forces `internal = actor.isStaff() && request.internal()`. Reads filter it out for non-staff via `...InternalFalse` repo variants in both list *and* search; both also gate ticket ownership (`assertCanView`).
+- **Bulk actions = partial success, deliberately NOT `@Transactional`.** `PUT /bulk/status` + `PATCH /bulk/assign` return `BulkResultDto(succeeded, failed)` with per-item try/catch. A wrapping transaction would roll back the successes when a later item throws, so each `saveAndFlush` auto-commits independently. Bulk assign validates the assignee once (batch-level 404); bulk status reuses `canTransitionTo` and reports bad-id + illegal-transition per item.
 
 ---
 
@@ -90,7 +92,9 @@ JWT-derived identity, SecurityConfig ordering fix, role-management endpoint, req
   - ✅ Comments (author edit within 15-min window; delete staff-only).
   - ✅ Status/priority/search endpoints scoped to requester for non-staff (nullable `requesterId` in the repo queries; `null` = staff/unscoped — keeps pagination totals correct). Verified in CI.
 - ✅ Comment search & pagination: `GET /api/comments/ticket/{id}` paginated + `GET /api/comments/ticket/{id}/search` (keyword over `content`, per-ticket, repo-level JPQL). Both guarded staff-or-requester (403 otherwise) — also closed a pre-existing gap where any USER could read any ticket's comments. `assertCanView` duplicated into `CommentServiceImpl` (extract on third copy).
-- ⬜ Remaining Phase 2 (agreed order): internal vs. public comments → self-assignment & bulk actions → ticket history/audit trail → attachments. (History before attachments so attachment events land in the timeline from day one.)
+- ✅ Internal vs. public comments: `internal` flag on `Comment`, staff-only to set, filtered out of list + search for non-staff.
+- ✅ Self-assignment & bulk actions: bulk status (`PUT /bulk/status`) + bulk assign (`PATCH /bulk/assign`), partial-success `BulkResultDto`. Assign-to-me dropped (no new capability); **unassign** (`assignedTo = null`) still open as a small follow-up.
+- ⬜ Remaining Phase 2: **ticket history / audit trail** → **attachments**. (History before attachments so attachment events land in the timeline from day one.)
 
 **DevOps track**
 - ✅ CI test gate + Testcontainers (parity gap closed).
@@ -100,13 +104,15 @@ JWT-derived identity, SecurityConfig ordering fix, role-management endpoint, req
 
 ## 8. Pending goals / open threads (start here next)
 
-1. **Next feature: internal vs. public comments** (first of the agreed Phase 2 sequence: internal comments → self-assignment & bulk actions → ticket history → attachments). Visibility flag on `Comment`, filter reads for non-staff — including the comments embedded in `TicketResponseDto`, not just the comment endpoints.
-2. **Comment endpoint niggles** (from the search/pagination review, non-blocking): default sort is `createdAt` descending — consider ascending for conversation order; add leading slashes to the new `ticket/...` mappings; delete the commented-out old `getCommentsForTicket`; remove the orphaned `List<Comment> findAllByTicketId(Long)` overload and unused `List` imports.
+1. **Next feature: ticket history / audit trail** (then attachments — last two Phase 2 items). Timeline entity recording status changes, reassignments, edits (who/what/when). Decide manual writes in each mutating service method vs. Hibernate Envers `@Audited`. Bulk operations should record per-item history too.
+2. **Internal-comment follow-up:** verify the comments embedded in `TicketResponseDto` (if any are serialized there) also respect the `internal` filter for non-staff — the filter currently lives in the comment read paths, not the ticket mapper.
+3. **Unassign endpoint** (`PATCH /{id}/unassign` → `assignedTo = null`) — small, was deferred from the bulk-actions slice.
+4. **Comment endpoint niggles** (non-blocking): default sort on comment reads — consider `createdAt` ascending for conversation order; remove any orphaned `findAllByTicketId` overloads / unused imports if still present.
 3. **Deferred refactor:** replace `PasswordResetToken`'s raw setters in `forgotPassword` with a static factory (`PasswordResetToken.issueFor(user, Duration)`) — valid-by-construction (`token`/`expiresAt` are non-null columns). Also: `assertCanView` now duplicated in `TicketServiceImpl` + `CommentServiceImpl` — extract a shared helper if a third copy appears.
 4. **Soft-delete caveat:** deleted users still hold the `unique` `username`/`email` constraints (can't re-register those). Revisit if needed (partial unique index or mangling).
 5. **JWT lifecycle (Phase 4):** tokens issued before a user is disabled/deleted stay valid until expiry (no refresh/revocation). Add an `isEnabled()` guard in `JwtAuthFilter` if immediate lockout is needed.
 
-*Resolved since last update:* ticket search/status ownership gap (requester-scoped repo queries, CI-verified); `VIA_DTO` pagination assertion confirmed green; comment search & pagination shipped with staff-or-requester guards (closing the open comment-read hole).
+*Resolved since last update:* internal vs. public comments shipped (staff-only flag, filtered from list + search); self-assignment & bulk actions shipped (bulk status + bulk assign, partial-success). Ownership item fully complete. *(Note: three separate `@Query`/param bugs this session — ticket `searchByKeyword`, and the comment internal-search `:includeInternal` — all caught only by the context test. See §3.)*
 
 ---
 
