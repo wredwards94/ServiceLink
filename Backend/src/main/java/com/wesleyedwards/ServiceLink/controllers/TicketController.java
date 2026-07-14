@@ -95,6 +95,11 @@ public class TicketController {
         return ResponseEntity.ok(ticketService.assignTicketToUser(id, userId));
     }
 
+    @PatchMapping("/{id}/unassign")
+    public ResponseEntity<TicketResponseDto> unassignTicket(@PathVariable Long id) {
+        return ResponseEntity.ok(ticketService.unassignTicket(id));
+    }
+
     @GetMapping("/requester/{requesterId}")
     public ResponseEntity<List<TicketResponseDto>> getTicketsByRequester(@PathVariable UUID requesterId,
                                                                          @AuthenticationPrincipal UserPrincipal user) {

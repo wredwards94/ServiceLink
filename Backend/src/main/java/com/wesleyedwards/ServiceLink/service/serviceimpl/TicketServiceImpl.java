@@ -38,7 +38,7 @@ public class TicketServiceImpl implements TicketService {
         List<Ticket> tickets = isStaff(actor)
                 ? ticketRepository.findAll()
                 : ticketRepository.findAllByRequester(actor.getUserId());
-        return ticketMapper.entitiesToResponseDtos(tickets);
+        return hideInternalComments(ticketMapper.entitiesToResponseDtos(tickets), actor);
     }
 
     @Override
@@ -55,7 +55,7 @@ public class TicketServiceImpl implements TicketService {
     public TicketResponseDto getTicketById(Long id, UserPrincipal actor) {
         Ticket ticket = checkTicketExists(id);
         assertCanView(actor, ticket);
-        return ticketMapper.entityToResponseDto(ticket);
+        return hideInternalComments(ticketMapper.entityToResponseDto(ticket), actor);
     }
 
     @Override
@@ -75,26 +75,26 @@ public class TicketServiceImpl implements TicketService {
 
     @Override
     public List<TicketResponseDto> getAllTicketsByStatus(TicketStatus status, UserPrincipal actor) {
-        return ticketMapper.entitiesToResponseDtos(
-                ticketRepository.findAllTicketsByStatus(status, requesterScope(actor)));
+        return hideInternalComments(ticketMapper.entitiesToResponseDtos(
+                ticketRepository.findAllTicketsByStatus(status, requesterScope(actor))), actor);
     }
 
     @Override
     public List<TicketResponseDto> getAllTicketsByPriority(TicketPriority priority, UserPrincipal actor) {
-        return ticketMapper.entitiesToResponseDtos(
-                ticketRepository.findAllTicketsByPriority(priority, requesterScope(actor)));
+        return hideInternalComments(ticketMapper.entitiesToResponseDtos(
+                ticketRepository.findAllTicketsByPriority(priority, requesterScope(actor))), actor);
     }
 
     @Override
     public Page<TicketResponseDto> searchTickets(String keyword, Pageable pageable, UserPrincipal actor) {
         return ticketRepository.searchByKeyword(keyword, requesterScope(actor), pageable)
-                .map(ticketMapper::entityToResponseDto);
+                .map(ticket -> hideInternalComments(ticketMapper.entityToResponseDto(ticket), actor));
     }
 
     @Override
     public Page<TicketResponseDto> advancedSearch(String keyword, TicketStatus status, TicketPriority priority, Pageable pageable, UserPrincipal actor) {
         return ticketRepository.advancedSearch(keyword, status, priority, requesterScope(actor), pageable)
-                .map(ticketMapper::entityToResponseDto);
+                .map(ticket -> hideInternalComments(ticketMapper.entityToResponseDto(ticket), actor));
     }
 
 
@@ -109,18 +109,27 @@ public class TicketServiceImpl implements TicketService {
     }
 
     @Override
+    public TicketResponseDto unassignTicket(Long id) {
+        Ticket foundTicket = checkTicketExists(id);
+        foundTicket.setAssignedTo(null);
+        return ticketMapper.entityToResponseDto(ticketRepository.saveAndFlush(foundTicket));
+    }
+
+    @Override
     public List<TicketResponseDto> getTicketsByRequester(UUID requesterId, UserPrincipal actor) {
         // A USER may only query their own tickets; staff may query anyone's.
         assertSelfOrStaff(actor, requesterId);
         checkUserExists(requesterId);
-        return ticketMapper.entitiesToResponseDtos(ticketRepository.findAllByRequester(requesterId));
+        return hideInternalComments(
+                ticketMapper.entitiesToResponseDtos(ticketRepository.findAllByRequester(requesterId)), actor);
     }
 
     @Override
     public List<TicketResponseDto> getTicketsAssignedToUser(UUID userId, UserPrincipal actor) {
         checkUserExists(userId);
         assertSelfOrStaff(actor, userId);
-        return ticketMapper.entitiesToResponseDtos(ticketRepository.findAllByAssignedToUser(userId));
+        return hideInternalComments(
+                ticketMapper.entitiesToResponseDtos(ticketRepository.findAllByAssignedToUser(userId)), actor);
     }
 
     @Override
@@ -183,6 +192,28 @@ public class TicketServiceImpl implements TicketService {
 
     private boolean isStaff(UserPrincipal actor) {
         return actor.getRole() == Role.ADMIN || actor.getRole() == Role.AGENT;
+    }
+
+    // Internal comments are staff-only. The ticket mapper embeds every comment, so for a
+    // non-staff viewer strip internal ones out of the embedded list before returning.
+    // (Object identity is preserved when there is nothing to remove, so staff results and
+    // internal-free tickets are returned unchanged.)
+    private TicketResponseDto hideInternalComments(TicketResponseDto dto, UserPrincipal actor) {
+        if (actor.isStaff() || dto.comments() == null
+                || dto.comments().stream().noneMatch(CommentResponseDto::internal)) {
+            return dto;
+        }
+        List<CommentResponseDto> visible = dto.comments().stream()
+                .filter(c -> !c.internal())
+                .toList();
+        return new TicketResponseDto(dto.id(), dto.title(), dto.description(), dto.status(),
+                dto.priority(), dto.category(), dto.assignedTo(), dto.requester(),
+                dto.createdAt(), dto.updatedAt(), visible);
+    }
+
+    private List<TicketResponseDto> hideInternalComments(List<TicketResponseDto> dtos, UserPrincipal actor) {
+        if (actor.isStaff()) return dtos;
+        return dtos.stream().map(dto -> hideInternalComments(dto, actor)).toList();
     }
 
     // Repository scope for requester-filtered queries: null for staff (unscoped),

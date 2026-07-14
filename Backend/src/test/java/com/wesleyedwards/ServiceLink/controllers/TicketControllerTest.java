@@ -230,6 +230,29 @@ class TicketControllerTest {
     }
 
     @Test
+    @DisplayName("PATCH /api/tickets/{id}/unassign returns 200 and clears the assignee")
+    void unassignTicket_returns200() throws Exception {
+        when(ticketService.unassignTicket(eq(5L))).thenReturn(sampleTicket(5L));
+
+        mockMvc.perform(patch("/api/tickets/{id}/unassign", 5L))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.assignedTo").value(org.hamcrest.Matchers.nullValue()));
+
+        verify(ticketService).unassignTicket(5L);
+    }
+
+    @Test
+    @DisplayName("PATCH /api/tickets/{id}/unassign returns 404 when the ticket is missing")
+    void unassignTicket_missing_returns404() throws Exception {
+        when(ticketService.unassignTicket(eq(5L)))
+                .thenThrow(new NotFoundException("Ticket 5 not found"));
+
+        mockMvc.perform(patch("/api/tickets/{id}/unassign", 5L))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.message").value("Ticket 5 not found"));
+    }
+
+    @Test
     @DisplayName("GET /api/tickets/requester/{requesterId} returns 200")
     void getByRequester_returns200() throws Exception {
         UUID requesterId = UUID.randomUUID();

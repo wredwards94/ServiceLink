@@ -93,7 +93,8 @@ JWT-derived identity, SecurityConfig ordering fix, role-management endpoint, req
   - ✅ Status/priority/search endpoints scoped to requester for non-staff (nullable `requesterId` in the repo queries; `null` = staff/unscoped — keeps pagination totals correct). Verified in CI.
 - ✅ Comment search & pagination: `GET /api/comments/ticket/{id}` paginated + `GET /api/comments/ticket/{id}/search` (keyword over `content`, per-ticket, repo-level JPQL). Both guarded staff-or-requester (403 otherwise) — also closed a pre-existing gap where any USER could read any ticket's comments. `assertCanView` duplicated into `CommentServiceImpl` (extract on third copy).
 - ✅ Internal vs. public comments: `internal` flag on `Comment`, staff-only to set, filtered out of list + search for non-staff.
-- ✅ Self-assignment & bulk actions: bulk status (`PUT /bulk/status`) + bulk assign (`PATCH /bulk/assign`), partial-success `BulkResultDto`. Assign-to-me dropped (no new capability); **unassign** (`assignedTo = null`) still open as a small follow-up.
+- ✅ Self-assignment & bulk actions: bulk status (`PUT /bulk/status`) + bulk assign (`PATCH /bulk/assign`), partial-success `BulkResultDto`. Assign-to-me dropped (no new capability); ✅ **unassign** now added (`PATCH /api/tickets/{id}/unassign` → `assignedTo = null`, staff-only).
+- ✅ Internal-comment leak in ticket responses closed: `TicketResponseDto` embeds the full comment list, so `TicketServiceImpl` now strips internal comments for non-staff across every ticket read path (the comment endpoints already filtered; the ticket mapper didn't).
 - ⬜ Remaining Phase 2: **ticket history / audit trail** → **attachments**. (History before attachments so attachment events land in the timeline from day one.)
 
 **DevOps track**
@@ -105,14 +106,14 @@ JWT-derived identity, SecurityConfig ordering fix, role-management endpoint, req
 ## 8. Pending goals / open threads (start here next)
 
 1. **Next feature: ticket history / audit trail** (then attachments — last two Phase 2 items). Timeline entity recording status changes, reassignments, edits (who/what/when). Decide manual writes in each mutating service method vs. Hibernate Envers `@Audited`. Bulk operations should record per-item history too.
-2. **Internal-comment follow-up:** verify the comments embedded in `TicketResponseDto` (if any are serialized there) also respect the `internal` filter for non-staff — the filter currently lives in the comment read paths, not the ticket mapper.
-3. **Unassign endpoint** (`PATCH /{id}/unassign` → `assignedTo = null`) — small, was deferred from the bulk-actions slice.
-4. **Comment endpoint niggles** (non-blocking): default sort on comment reads — consider `createdAt` ascending for conversation order; remove any orphaned `findAllByTicketId` overloads / unused imports if still present.
-3. **Deferred refactor:** replace `PasswordResetToken`'s raw setters in `forgotPassword` with a static factory (`PasswordResetToken.issueFor(user, Duration)`) — valid-by-construction (`token`/`expiresAt` are non-null columns). Also: `assertCanView` now duplicated in `TicketServiceImpl` + `CommentServiceImpl` — extract a shared helper if a third copy appears.
-4. **Soft-delete caveat:** deleted users still hold the `unique` `username`/`email` constraints (can't re-register those). Revisit if needed (partial unique index or mangling).
-5. **JWT lifecycle (Phase 4):** tokens issued before a user is disabled/deleted stay valid until expiry (no refresh/revocation). Add an `isEnabled()` guard in `JwtAuthFilter` if immediate lockout is needed.
+1. ✅ **Internal-comment follow-up — DONE.** The comments embedded in `TicketResponseDto` now respect the `internal` filter for non-staff: `TicketServiceImpl.hideInternalComments(...)` strips them across every ticket read path (identity preserved when nothing to strip). Covered by owner-hidden / staff-visible tests.
+2. ✅ **Unassign endpoint — DONE.** `PATCH /api/tickets/{id}/unassign` → `assignedTo = null` (staff-only via existing URL rules). Service + controller tests.
+3. ✅ **`PasswordResetToken` factory — DONE.** `PasswordResetToken.issueFor(user, Duration)` replaces the raw setters in `forgotPassword` (valid-by-construction). *Still open:* `assertCanView` remains duplicated in `TicketServiceImpl` + `CommentServiceImpl` — extract a shared helper if a third copy appears.
+4. **Comment endpoint niggles** (non-blocking, still open): default sort on comment reads — consider `createdAt` ascending for conversation order. (Deliberately left out of the last pass as a behavior change.)
+5. **Soft-delete caveat** (still open): deleted users still hold the `unique` `username`/`email` constraints (can't re-register those). Revisit if needed (partial unique index or mangling).
+6. **JWT lifecycle (Phase 4):** tokens issued before a user is disabled/deleted stay valid until expiry (no refresh/revocation). Add an `isEnabled()` guard in `JwtAuthFilter` if immediate lockout is needed.
 
-*Resolved since last update:* internal vs. public comments shipped (staff-only flag, filtered from list + search); self-assignment & bulk actions shipped (bulk status + bulk assign, partial-success). Ownership item fully complete. *(Note: three separate `@Query`/param bugs this session — ticket `searchByKeyword`, and the comment internal-search `:includeInternal` — all caught only by the context test. See §3.)*
+*Resolved since last update:* smaller-threads batch shipped — internal-comment leak in `TicketResponseDto` closed, unassign endpoint added, `PasswordResetToken.issueFor` factory. (Branch `worktree-smaller-threads`; full suite green locally — 108 run, 0 fail, 1 skipped = the Docker-gated context test.) *Earlier:* internal vs. public comments (staff-only flag, filtered from list + search); self-assignment & bulk actions (partial-success). Ownership item fully complete. *(Note: three separate `@Query`/param bugs in an earlier session — ticket `searchByKeyword`, comment internal-search — all caught only by the context test. See §3.)*
 
 ---
 
