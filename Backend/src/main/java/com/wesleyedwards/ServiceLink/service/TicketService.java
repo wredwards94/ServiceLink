@@ -32,6 +32,8 @@ public interface TicketService {
 
     TicketResponseDto assignTicketToUser(Long id, UUID userId);
 
+    TicketResponseDto unassignTicket(Long id);
+
     List<TicketResponseDto> getTicketsByRequester(UUID requesterId, UserPrincipal actor);
 
     List<TicketResponseDto> getTicketsAssignedToUser(UUID userId, UserPrincipal actor);

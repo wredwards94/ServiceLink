@@ -5,6 +5,7 @@ import com.wesleyedwards.ServiceLink.dtos.BulkAssignDto;
 import com.wesleyedwards.ServiceLink.dtos.BulkFailureDto;
 import com.wesleyedwards.ServiceLink.dtos.BulkResultDto;
 import com.wesleyedwards.ServiceLink.dtos.BulkStatusDto;
+import com.wesleyedwards.ServiceLink.dtos.CommentResponseDto;
 import com.wesleyedwards.ServiceLink.dtos.TicketRequestDto;
 import com.wesleyedwards.ServiceLink.dtos.TicketResponseDto;
 import com.wesleyedwards.ServiceLink.dtos.TicketStatusUpdateDto;
@@ -37,6 +38,8 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -105,7 +108,7 @@ class TicketServiceImplTest {
         when(ticketRepository.findAllByRequester(userId)).thenReturn(tickets);
         when(ticketMapper.entitiesToResponseDtos(tickets)).thenReturn(dtos);
 
-        assertSame(dtos, ticketService.getAllTickets(principal(userId, Role.USER)));
+        assertEquals(dtos, ticketService.getAllTickets(principal(userId, Role.USER)));
         verify(ticketRepository, never()).findAll();
     }
 
@@ -262,7 +265,7 @@ class TicketServiceImplTest {
         when(ticketRepository.findAllTicketsByStatus(TicketStatus.NEW, userId)).thenReturn(tickets);
         when(ticketMapper.entitiesToResponseDtos(tickets)).thenReturn(dtos);
 
-        assertSame(dtos, ticketService.getAllTicketsByStatus(TicketStatus.NEW, principal(userId, Role.USER)));
+        assertEquals(dtos, ticketService.getAllTicketsByStatus(TicketStatus.NEW, principal(userId, Role.USER)));
     }
 
     @Test
@@ -284,7 +287,7 @@ class TicketServiceImplTest {
         when(ticketRepository.findAllTicketsByPriority(TicketPriority.HIGH, userId)).thenReturn(tickets);
         when(ticketMapper.entitiesToResponseDtos(tickets)).thenReturn(dtos);
 
-        assertSame(dtos, ticketService.getAllTicketsByPriority(TicketPriority.HIGH, principal(userId, Role.USER)));
+        assertEquals(dtos, ticketService.getAllTicketsByPriority(TicketPriority.HIGH, principal(userId, Role.USER)));
     }
 
     @Test
@@ -376,6 +379,71 @@ class TicketServiceImplTest {
     }
 
     @Test
+    @DisplayName("unassignTicket clears the assignee and saves")
+    void unassignTicket_clearsAssignee() {
+        User agent = new User();
+        agent.setUserId(userId);
+        ticket.setAssignedTo(agent);
+        when(ticketRepository.findById(ticketId)).thenReturn(Optional.of(ticket));
+        when(ticketRepository.saveAndFlush(ticket)).thenReturn(ticket);
+        when(ticketMapper.entityToResponseDto(ticket)).thenReturn(ticketDto);
+
+        assertSame(ticketDto, ticketService.unassignTicket(ticketId));
+        assertNull(ticket.getAssignedTo());
+        verify(ticketRepository).saveAndFlush(ticket);
+    }
+
+    @Test
+    @DisplayName("unassignTicket throws when the ticket is missing")
+    void unassignTicket_missing() {
+        when(ticketRepository.findById(ticketId)).thenReturn(Optional.empty());
+
+        assertThrows(NotFoundException.class, () -> ticketService.unassignTicket(ticketId));
+        verify(ticketRepository, never()).saveAndFlush(any());
+    }
+
+    // ---------- internal-comment filtering on ticket reads ----------
+
+    @Test
+    @DisplayName("getTicketById strips internal comments for the requesting USER")
+    void getTicketById_ownerDoesNotSeeInternalComments() {
+        User requester = new User();
+        requester.setUserId(userId);
+        ticket.setRequester(requester);
+        TicketResponseDto withComments = dtoWithComments(
+                new CommentResponseDto(1L, userId, "Al", ticketId, "public", null, false),
+                new CommentResponseDto(2L, userId, "Ag", ticketId, "internal", null, true));
+        when(ticketRepository.findById(ticketId)).thenReturn(Optional.of(ticket));
+        when(ticketMapper.entityToResponseDto(ticket)).thenReturn(withComments);
+
+        TicketResponseDto result = ticketService.getTicketById(ticketId, principal(userId, Role.USER));
+
+        assertEquals(1, result.comments().size());
+        assertFalse(result.comments().get(0).internal());
+    }
+
+    @Test
+    @DisplayName("getTicketById keeps internal comments for staff")
+    void getTicketById_staffSeesInternalComments() {
+        TicketResponseDto withComments = dtoWithComments(
+                new CommentResponseDto(1L, userId, "Al", ticketId, "public", null, false),
+                new CommentResponseDto(2L, userId, "Ag", ticketId, "internal", null, true));
+        when(ticketRepository.findById(ticketId)).thenReturn(Optional.of(ticket));
+        when(ticketMapper.entityToResponseDto(ticket)).thenReturn(withComments);
+
+        TicketResponseDto result = ticketService.getTicketById(ticketId, principal(userId, Role.AGENT));
+
+        assertSame(withComments, result); // unchanged for staff
+        assertEquals(2, result.comments().size());
+    }
+
+    private TicketResponseDto dtoWithComments(CommentResponseDto... comments) {
+        return new TicketResponseDto(ticketId, "Login broken", "desc",
+                TicketStatus.NEW, TicketPriority.HIGH, "Technical",
+                null, userId, null, null, List.of(comments));
+    }
+
+    @Test
     @DisplayName("getTicketsByRequester validates the user then returns their tickets")
     void getTicketsByRequester_returnsTickets() {
         User requester = new User();
@@ -386,7 +454,7 @@ class TicketServiceImplTest {
         when(ticketRepository.findAllByRequester(userId)).thenReturn(tickets);
         when(ticketMapper.entitiesToResponseDtos(tickets)).thenReturn(dtos);
 
-        assertSame(dtos, ticketService.getTicketsByRequester(userId, principal(userId, Role.USER)));
+        assertEquals(dtos, ticketService.getTicketsByRequester(userId, principal(userId, Role.USER)));
     }
 
     @Test

@@ -23,6 +23,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -110,10 +111,7 @@ public class UserServiceImpl implements UserService {
     public void forgotPassword(ForgotPasswordDto dto) {
         userRepository.findByProfileEmail(dto.email()).ifPresent(user -> {
             // create + save token, then log it
-            PasswordResetToken token = new PasswordResetToken();
-            token.setToken(UUID.randomUUID().toString());
-            token.setUser(user);
-            token.setExpiresAt(LocalDateTime.now().plusMinutes(15));
+            PasswordResetToken token = PasswordResetToken.issueFor(user, Duration.ofMinutes(15));
             passwordResetTokenRepository.save(token);
             log.info("Password reset token for {}: {}", dto.email(), token.getToken());
         });
