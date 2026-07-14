@@ -3,6 +3,10 @@ package com.wesleyedwards.ServiceLink.controllers;
 import com.wesleyedwards.ServiceLink.config.JwtAuthFilter;
 import com.wesleyedwards.ServiceLink.config.SecurityConfig;
 import com.wesleyedwards.ServiceLink.config.UserPrincipal;
+import com.wesleyedwards.ServiceLink.dtos.BulkAssignDto;
+import com.wesleyedwards.ServiceLink.dtos.BulkFailureDto;
+import com.wesleyedwards.ServiceLink.dtos.BulkResultDto;
+import com.wesleyedwards.ServiceLink.dtos.BulkStatusDto;
 import com.wesleyedwards.ServiceLink.dtos.TicketRequestDto;
 import com.wesleyedwards.ServiceLink.dtos.TicketResponseDto;
 import com.wesleyedwards.ServiceLink.dtos.TicketUpdateDto;
@@ -235,5 +239,37 @@ class TicketControllerTest {
                 .andExpect(status().isOk());
 
         verify(ticketService).getTicketsByRequester(eq(requesterId), any());
+    }
+
+    @Test
+    @DisplayName("PATCH /api/tickets/bulk/assign returns 200 with the bulk result")
+    void bulkAssign_returns200() throws Exception {
+        when(ticketService.bulkAssignTickets(any(BulkAssignDto.class), any()))
+                .thenReturn(new BulkResultDto(List.of(1L, 2L), List.of()));
+
+        String body = "{\"ticketIds\": [1, 2], \"userId\": \"11111111-1111-1111-1111-111111111111\"}";
+
+        mockMvc.perform(patch("/api/tickets/bulk/assign")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.succeeded[0]").value(1))
+                .andExpect(jsonPath("$.failed").isEmpty());
+    }
+
+    @Test
+    @DisplayName("PUT /api/tickets/bulk/status returns 200 with succeeded and failed items")
+    void bulkStatus_returns200() throws Exception {
+        when(ticketService.bulkUpdateTicketStatus(any(BulkStatusDto.class)))
+                .thenReturn(new BulkResultDto(List.of(1L), List.of(new BulkFailureDto(2L, "Cannot transition"))));
+
+        String body = "{\"ticketIds\": [1, 2], \"status\": \"IN_PROGRESS\"}";
+
+        mockMvc.perform(put("/api/tickets/bulk/status")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.succeeded[0]").value(1))
+                .andExpect(jsonPath("$.failed[0].ticketId").value(2));
     }
 }

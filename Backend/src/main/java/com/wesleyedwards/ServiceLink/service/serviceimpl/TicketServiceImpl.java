@@ -1,10 +1,7 @@
 package com.wesleyedwards.ServiceLink.service.serviceimpl;
 
 import com.wesleyedwards.ServiceLink.config.UserPrincipal;
-import com.wesleyedwards.ServiceLink.dtos.TicketRequestDto;
-import com.wesleyedwards.ServiceLink.dtos.TicketResponseDto;
-import com.wesleyedwards.ServiceLink.dtos.TicketStatusUpdateDto;
-import com.wesleyedwards.ServiceLink.dtos.TicketUpdateDto;
+import com.wesleyedwards.ServiceLink.dtos.*;
 import com.wesleyedwards.ServiceLink.entities.Ticket;
 import com.wesleyedwards.ServiceLink.entities.User;
 import com.wesleyedwards.ServiceLink.exceptions.BadRequestException;
@@ -23,6 +20,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -120,8 +118,8 @@ public class TicketServiceImpl implements TicketService {
 
     @Override
     public List<TicketResponseDto> getTicketsAssignedToUser(UUID userId, UserPrincipal actor) {
-        assertSelfOrStaff(actor, userId);
         checkUserExists(userId);
+        assertSelfOrStaff(actor, userId);
         return ticketMapper.entitiesToResponseDtos(ticketRepository.findAllByAssignedToUser(userId));
     }
 
@@ -133,6 +131,54 @@ public class TicketServiceImpl implements TicketService {
         foundTicket.setStatus(status.ticketStatus());
 
         return ticketMapper.entityToResponseDto(ticketRepository.saveAndFlush(foundTicket));
+    }
+
+    // NOTE: intentionally NOT @Transactional. Partial success requires each ticket's
+    // saveAndFlush to auto-commit independently; a wrapping transaction would roll back
+    // the successful items when a later item throws.
+    @Override
+    public BulkResultDto bulkAssignTickets(BulkAssignDto bulkAssignDto, UserPrincipal actor) {
+        // Batch-level: the assignee is the same for every ticket, so validate once.
+        // A missing assignee fails the whole request (404) rather than every item.
+        User assignee = checkUserExists(bulkAssignDto.userId());
+
+        List<Long> succeeded = new ArrayList<>();
+        List<BulkFailureDto> failed = new ArrayList<>();
+
+        for (Long ticketId : bulkAssignDto.ticketIds()) {
+            try {
+                Ticket ticket = checkTicketExists(ticketId);
+                ticket.setAssignedTo(assignee);
+                ticketRepository.saveAndFlush(ticket);
+                succeeded.add(ticketId);
+            } catch (NotFoundException e) {
+                failed.add(new BulkFailureDto(ticketId, e.getMessage()));
+            }
+        }
+        return new BulkResultDto(succeeded, failed);
+    }
+
+    // NOTE: intentionally NOT @Transactional — see bulkAssignTickets.
+    @Override
+    public BulkResultDto bulkUpdateTicketStatus(BulkStatusDto bulkStatusDto) {
+        List<Long> succeeded = new ArrayList<>();
+        List<BulkFailureDto> failed = new ArrayList<>();
+
+        for (Long ticketId : bulkStatusDto.ticketIds()) {
+            try {
+                Ticket ticket = checkTicketExists(ticketId);
+                if (!ticket.getStatus().canTransitionTo(bulkStatusDto.status())) {
+                    throw new BadRequestException("Cannot transition from " + ticket.getStatus()
+                            + " to " + bulkStatusDto.status());
+                }
+                ticket.setStatus(bulkStatusDto.status());
+                ticketRepository.saveAndFlush(ticket);
+                succeeded.add(ticketId);
+            } catch (NotFoundException | BadRequestException e) {
+                failed.add(new BulkFailureDto(ticketId, e.getMessage()));
+            }
+        }
+        return new BulkResultDto(succeeded, failed);
     }
 
     private boolean isStaff(UserPrincipal actor) {

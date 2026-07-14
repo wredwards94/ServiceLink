@@ -1,10 +1,7 @@
 package com.wesleyedwards.ServiceLink.controllers;
 
 import com.wesleyedwards.ServiceLink.config.UserPrincipal;
-import com.wesleyedwards.ServiceLink.dtos.TicketRequestDto;
-import com.wesleyedwards.ServiceLink.dtos.TicketResponseDto;
-import com.wesleyedwards.ServiceLink.dtos.TicketStatusUpdateDto;
-import com.wesleyedwards.ServiceLink.dtos.TicketUpdateDto;
+import com.wesleyedwards.ServiceLink.dtos.*;
 import com.wesleyedwards.ServiceLink.service.TicketService;
 import com.wesleyedwards.ServiceLink.enums.TicketPriority;
 import com.wesleyedwards.ServiceLink.enums.TicketStatus;
@@ -113,5 +110,15 @@ public class TicketController {
     @PatchMapping("/{id}/status")
     public ResponseEntity<TicketResponseDto> updateTicketStatus(@PathVariable Long id, @Valid @RequestBody TicketStatusUpdateDto status) {
         return ResponseEntity.ok(ticketService.updateTicketStatus(id, status));
+    }
+
+    @PatchMapping("/bulk/assign")
+    public ResponseEntity<BulkResultDto> bulkAssignTickets(@Valid @RequestBody BulkAssignDto bulkAssignDto, @AuthenticationPrincipal UserPrincipal actor) {
+        return ResponseEntity.ok(ticketService.bulkAssignTickets(bulkAssignDto, actor));
+    }
+
+    @PutMapping("/bulk/status")
+    public ResponseEntity<BulkResultDto> bulkUpdateTicketStatus(@Valid @RequestBody BulkStatusDto bulkStatusDto) {
+        return ResponseEntity.ok(ticketService.bulkUpdateTicketStatus(bulkStatusDto));
     }
 }

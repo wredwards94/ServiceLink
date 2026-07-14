@@ -1,6 +1,10 @@
 package com.wesleyedwards.ServiceLink.service.serviceimpl;
 
 import com.wesleyedwards.ServiceLink.config.UserPrincipal;
+import com.wesleyedwards.ServiceLink.dtos.BulkAssignDto;
+import com.wesleyedwards.ServiceLink.dtos.BulkFailureDto;
+import com.wesleyedwards.ServiceLink.dtos.BulkResultDto;
+import com.wesleyedwards.ServiceLink.dtos.BulkStatusDto;
 import com.wesleyedwards.ServiceLink.dtos.TicketRequestDto;
 import com.wesleyedwards.ServiceLink.dtos.TicketResponseDto;
 import com.wesleyedwards.ServiceLink.dtos.TicketStatusUpdateDto;
@@ -35,6 +39,7 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.never;
@@ -401,5 +406,99 @@ class TicketServiceImplTest {
 
         assertThrows(NotFoundException.class,
                 () -> ticketService.getTicketsAssignedToUser(userId, principal(userId, Role.ADMIN)));
+    }
+
+    // ---------- bulk status ----------
+
+    @Test
+    @DisplayName("bulkUpdateTicketStatus applies every valid transition")
+    void bulkUpdateTicketStatus_allSucceed() {
+        // ticket (id 1) is NEW; NEW -> IN_PROGRESS is allowed
+        Ticket t2 = new Ticket();
+        t2.setId(2L);
+        t2.setStatus(TicketStatus.NEW);
+        BulkStatusDto dto = new BulkStatusDto(List.of(1L, 2L), TicketStatus.IN_PROGRESS);
+        when(ticketRepository.findById(1L)).thenReturn(Optional.of(ticket));
+        when(ticketRepository.findById(2L)).thenReturn(Optional.of(t2));
+
+        BulkResultDto result = ticketService.bulkUpdateTicketStatus(dto);
+
+        assertEquals(2, result.succeeded().size());
+        assertTrue(result.succeeded().containsAll(List.of(1L, 2L)));
+        assertEquals(0, result.failed().size());
+        assertEquals(TicketStatus.IN_PROGRESS, ticket.getStatus());
+        assertEquals(TicketStatus.IN_PROGRESS, t2.getStatus());
+    }
+
+    @Test
+    @DisplayName("bulkUpdateTicketStatus keeps going on failures (partial success)")
+    void bulkUpdateTicketStatus_partialSuccess() {
+        // ticket (id 1) NEW -> IN_PROGRESS ok; ticket 2 CLOSED -> IN_PROGRESS illegal; 99 missing
+        Ticket closed = new Ticket();
+        closed.setId(2L);
+        closed.setStatus(TicketStatus.CLOSED);
+        BulkStatusDto dto = new BulkStatusDto(List.of(1L, 2L, 99L), TicketStatus.IN_PROGRESS);
+        when(ticketRepository.findById(1L)).thenReturn(Optional.of(ticket));
+        when(ticketRepository.findById(2L)).thenReturn(Optional.of(closed));
+        when(ticketRepository.findById(99L)).thenReturn(Optional.empty());
+
+        BulkResultDto result = ticketService.bulkUpdateTicketStatus(dto);
+
+        assertEquals(List.of(1L), result.succeeded());
+        List<Long> failedIds = result.failed().stream().map(BulkFailureDto::ticketId).toList();
+        assertEquals(2, failedIds.size());
+        assertTrue(failedIds.containsAll(List.of(2L, 99L)));
+        assertEquals(TicketStatus.CLOSED, closed.getStatus()); // unchanged
+    }
+
+    // ---------- bulk assign ----------
+
+    @Test
+    @DisplayName("bulkAssignTickets assigns every existing ticket to the assignee")
+    void bulkAssignTickets_allSucceed() {
+        User assignee = new User();
+        assignee.setUserId(userId);
+        Ticket t2 = new Ticket();
+        t2.setId(2L);
+        BulkAssignDto dto = new BulkAssignDto(List.of(1L, 2L), userId);
+        when(userRepository.findById(userId)).thenReturn(Optional.of(assignee));
+        when(ticketRepository.findById(1L)).thenReturn(Optional.of(ticket));
+        when(ticketRepository.findById(2L)).thenReturn(Optional.of(t2));
+
+        BulkResultDto result = ticketService.bulkAssignTickets(dto, principal(userId, Role.ADMIN));
+
+        assertEquals(2, result.succeeded().size());
+        assertEquals(0, result.failed().size());
+        assertSame(assignee, ticket.getAssignedTo());
+        assertSame(assignee, t2.getAssignedTo());
+    }
+
+    @Test
+    @DisplayName("bulkAssignTickets fails the whole request when the assignee is missing")
+    void bulkAssignTickets_missingAssignee() {
+        BulkAssignDto dto = new BulkAssignDto(List.of(1L, 2L), userId);
+        when(userRepository.findById(userId)).thenReturn(Optional.empty());
+
+        assertThrows(NotFoundException.class,
+                () -> ticketService.bulkAssignTickets(dto, principal(userId, Role.ADMIN)));
+        verify(ticketRepository, never()).findById(anyLong());
+    }
+
+    @Test
+    @DisplayName("bulkAssignTickets keeps going when a ticket is missing (partial success)")
+    void bulkAssignTickets_partialSuccess() {
+        User assignee = new User();
+        assignee.setUserId(userId);
+        BulkAssignDto dto = new BulkAssignDto(List.of(1L, 99L), userId);
+        when(userRepository.findById(userId)).thenReturn(Optional.of(assignee));
+        when(ticketRepository.findById(1L)).thenReturn(Optional.of(ticket));
+        when(ticketRepository.findById(99L)).thenReturn(Optional.empty());
+
+        BulkResultDto result = ticketService.bulkAssignTickets(dto, principal(userId, Role.ADMIN));
+
+        assertEquals(List.of(1L), result.succeeded());
+        assertEquals(1, result.failed().size());
+        assertEquals(99L, result.failed().get(0).ticketId());
+        assertSame(assignee, ticket.getAssignedTo());
     }
 }

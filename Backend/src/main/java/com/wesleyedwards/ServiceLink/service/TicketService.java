@@ -1,12 +1,10 @@
 package com.wesleyedwards.ServiceLink.service;
 
 import com.wesleyedwards.ServiceLink.config.UserPrincipal;
-import com.wesleyedwards.ServiceLink.dtos.TicketRequestDto;
-import com.wesleyedwards.ServiceLink.dtos.TicketResponseDto;
-import com.wesleyedwards.ServiceLink.dtos.TicketStatusUpdateDto;
-import com.wesleyedwards.ServiceLink.dtos.TicketUpdateDto;
+import com.wesleyedwards.ServiceLink.dtos.*;
 import com.wesleyedwards.ServiceLink.enums.TicketPriority;
 import com.wesleyedwards.ServiceLink.enums.TicketStatus;
+import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
@@ -40,5 +38,8 @@ public interface TicketService {
 
     TicketResponseDto updateTicketStatus(Long id, TicketStatusUpdateDto status);
 
-//    List<CommentResponseDto> getCommentsForTicket(Long id);
+    BulkResultDto bulkAssignTickets(@Valid BulkAssignDto bulkAssignDto, UserPrincipal actor);
+
+    BulkResultDto bulkUpdateTicketStatus(@Valid BulkStatusDto bulkStatusDto);
+
 }
