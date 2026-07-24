@@ -119,6 +119,11 @@
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-security</artifactId>
 		</dependency>
+		<!-- Hibernate Envers: entity audit history (@Audited). Version from the Boot BOM. -->
+		<dependency>
+			<groupId>org.hibernate.orm</groupId>
+			<artifactId>hibernate-envers</artifactId>
+		</dependency>
 	</dependencies>
 
 	<build>

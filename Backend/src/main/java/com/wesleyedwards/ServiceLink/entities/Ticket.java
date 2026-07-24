@@ -11,6 +11,9 @@ import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.SoftDelete;
 import org.hibernate.annotations.UpdateTimestamp;
+import org.hibernate.envers.Audited;
+import org.hibernate.envers.NotAudited;
+import org.hibernate.envers.RelationTargetAuditMode;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -20,6 +23,7 @@ import java.util.List;
 @Getter
 @Setter
 @SoftDelete
+@Audited
 public class Ticket {
 
     @Id
@@ -39,10 +43,12 @@ public class Ticket {
 
     @ManyToOne
     @JsonBackReference(value = "assignedTickets")
+    @Audited(targetAuditMode = RelationTargetAuditMode.NOT_AUDITED)
     private User assignedTo; // Agent assigned to the ticket
 
     @ManyToOne
     @JsonBackReference(value = "requestedTickets")
+    @Audited(targetAuditMode = RelationTargetAuditMode.NOT_AUDITED)
     private User requester;
 
     @CreationTimestamp
@@ -53,5 +59,6 @@ public class Ticket {
 
     @OneToMany(mappedBy = "ticket", cascade = CascadeType.REMOVE)
     @JsonManagedReference(value = "commentAuthor")
+    @NotAudited
     private List<Comment> comments;
 }

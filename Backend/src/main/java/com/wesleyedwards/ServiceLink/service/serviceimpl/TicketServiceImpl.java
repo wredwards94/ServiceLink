@@ -1,5 +1,6 @@
 package com.wesleyedwards.ServiceLink.service.serviceimpl;
 
+import com.wesleyedwards.ServiceLink.config.ServiceLinkRevision;
 import com.wesleyedwards.ServiceLink.config.UserPrincipal;
 import com.wesleyedwards.ServiceLink.dtos.*;
 import com.wesleyedwards.ServiceLink.entities.Ticket;
@@ -14,14 +15,22 @@ import com.wesleyedwards.ServiceLink.service.TicketService;
 import com.wesleyedwards.ServiceLink.enums.Role;
 import com.wesleyedwards.ServiceLink.enums.TicketPriority;
 import com.wesleyedwards.ServiceLink.enums.TicketStatus;
+import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.hibernate.envers.AuditReader;
+import org.hibernate.envers.AuditReaderFactory;
+import org.hibernate.envers.RevisionType;
+import org.hibernate.envers.query.AuditEntity;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -31,6 +40,7 @@ public class TicketServiceImpl implements TicketService {
     private final TicketRepository ticketRepository;
     private final UserRepository userRepository;
     private final TicketMapper ticketMapper;
+    private final EntityManager em;
 
     @Override
     public List<TicketResponseDto> getAllTickets(UserPrincipal actor) {
@@ -188,6 +198,91 @@ public class TicketServiceImpl implements TicketService {
             }
         }
         return new BulkResultDto(succeeded, failed);
+    }
+
+    @Override
+    @Transactional
+    public List<TicketHistoryEntryDto> getTicketHistory(Long id, UserPrincipal actor) {
+        Ticket ticket = checkTicketExists(id);
+        assertCanView(actor, ticket);
+
+        AuditReader reader = AuditReaderFactory.get(em);
+
+        // Each row is Object[]{ Ticket snapshot, ServiceLinkRevision, RevisionType }.
+        // Ordered oldest-first so each snapshot can be diffed against the previous one.
+        @SuppressWarnings("unchecked")
+        List<Object[]> rows = reader.createQuery()
+                .forRevisionsOfEntity(Ticket.class, false, true)
+                .add(AuditEntity.id().eq(id))
+                .addOrder(AuditEntity.revisionNumber().asc())
+                .getResultList();
+
+        List<TicketHistoryEntryDto> history = new ArrayList<>();
+        Ticket previous = null;
+
+        for (Object[] row : rows) {
+            Ticket snapshot = (Ticket) row[0];
+            ServiceLinkRevision revision = (ServiceLinkRevision) row[1];
+            RevisionType type = (RevisionType) row[2];
+
+            int revNumber = revision.getId();
+            LocalDateTime when = LocalDateTime.ofInstant(
+                    revision.getRevisionDate().toInstant(), ZoneId.systemDefault());
+            String actorName = revision.getActorName();
+            UUID actorId = revision.getActorId();
+
+            switch (type) {
+                case ADD -> history.add(new TicketHistoryEntryDto(
+                        revNumber, when, actorName, actorId, "CREATED", null, null, null));
+                case DEL -> history.add(new TicketHistoryEntryDto(
+                        revNumber, when, actorName, actorId, "DELETED", null, null, null));
+                // NOTE: @SoftDelete deletes surface as MOD (not DEL) and the soft-delete
+                // flag is not an audited property, so a delete produces no field changes
+                // below. Verify empirically and special-case it if a DELETED row is wanted.
+                case MOD -> addFieldChanges(
+                        history, previous, snapshot, revNumber, when, actorName, actorId);
+            }
+            previous = snapshot;
+        }
+        return history;
+    }
+
+    // Emit one MODIFIED entry per audited field that differs between the previous and
+    // current snapshot. prev is null when the first recorded revision is a MOD (e.g.
+    // Envers enabled after the row already existed) — every field then reads as null -> value.
+    private void addFieldChanges(List<TicketHistoryEntryDto> history, Ticket prev, Ticket curr,
+                                 int rev, LocalDateTime when, String actorName, UUID actorId) {
+        addChange(history, rev, when, actorName, actorId, "title",
+                prev == null ? null : prev.getTitle(), curr.getTitle());
+        addChange(history, rev, when, actorName, actorId, "description",
+                prev == null ? null : prev.getDescription(), curr.getDescription());
+        addChange(history, rev, when, actorName, actorId, "status",
+                enumName(prev == null ? null : prev.getStatus()), enumName(curr.getStatus()));
+        addChange(history, rev, when, actorName, actorId, "priority",
+                enumName(prev == null ? null : prev.getPriority()), enumName(curr.getPriority()));
+        addChange(history, rev, when, actorName, actorId, "category",
+                prev == null ? null : prev.getCategory(), curr.getCategory());
+        addChange(history, rev, when, actorName, actorId, "assignedTo",
+                username(prev == null ? null : prev.getAssignedTo()), username(curr.getAssignedTo()));
+    }
+
+    private void addChange(List<TicketHistoryEntryDto> history, int rev, LocalDateTime when,
+                           String actorName, UUID actorId, String field, String oldVal, String newVal) {
+        if (!Objects.equals(oldVal, newVal)) {
+            history.add(new TicketHistoryEntryDto(
+                    rev, when, actorName, actorId, "MODIFIED", field, oldVal, newVal));
+        }
+    }
+
+    private String enumName(Enum<?> value) {
+        return value == null ? null : value.name();
+    }
+
+    private String username(User user) {
+        if (user == null) return null;
+        return user.getCredentials() != null
+                ? user.getCredentials().getUsername()
+                : String.valueOf(user.getUserId());
     }
 
     private boolean isStaff(UserPrincipal actor) {

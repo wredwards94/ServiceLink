@@ -44,4 +44,6 @@ public interface TicketService {
 
     BulkResultDto bulkUpdateTicketStatus(@Valid BulkStatusDto bulkStatusDto);
 
+    List<TicketHistoryEntryDto> getTicketHistory(Long id, UserPrincipal actor);
+
 }
