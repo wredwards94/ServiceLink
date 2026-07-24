@@ -126,4 +126,10 @@ public class TicketController {
     public ResponseEntity<BulkResultDto> bulkUpdateTicketStatus(@Valid @RequestBody BulkStatusDto bulkStatusDto) {
         return ResponseEntity.ok(ticketService.bulkUpdateTicketStatus(bulkStatusDto));
     }
+
+    @GetMapping("/{id}/history")
+    public ResponseEntity<List<TicketHistoryEntryDto>> getTicketHistory(@PathVariable Long id,
+                                                                        @AuthenticationPrincipal UserPrincipal actor) {
+        return ResponseEntity.ok(ticketService.getTicketHistory(id, actor));
+    }
 }
