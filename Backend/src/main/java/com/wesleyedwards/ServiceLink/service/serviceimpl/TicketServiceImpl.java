@@ -205,13 +205,12 @@ public class TicketServiceImpl implements TicketService {
     @Override
     @Transactional
     public List<TicketHistoryEntryDto> getTicketHistory(Long id, UserPrincipal actor) {
-        Ticket ticket = checkTicketExists(id);
-        ticketAccess.assertCanView(actor, ticket);
-
         AuditReader reader = AuditReaderFactory.get(em);
 
         // Each row is Object[]{ Ticket snapshot, ServiceLinkRevision, RevisionType }.
         // Ordered oldest-first so each snapshot can be diffed against the previous one.
+        // Existence and ownership are derived from the audit history (not findById), so a
+        // soft-deleted ticket's history stays viewable — findById filters @SoftDelete rows.
         @SuppressWarnings("unchecked")
         List<Object[]> rows = reader.createQuery()
                 .forRevisionsOfEntity(Ticket.class, false, true)
@@ -219,13 +218,28 @@ public class TicketServiceImpl implements TicketService {
                 .addOrder(AuditEntity.revisionNumber().asc())
                 .getResultList();
 
+        if (rows.isEmpty()) {
+            throw new NotFoundException("Ticket " + id + " not found");
+        }
+
+        // Ownership: check against the latest non-null snapshot. requester is NOT_AUDITED,
+        // so it resolves against the live users table — fine for the ownership decision.
+        Ticket latestSnapshot = null;
+        for (Object[] row : rows) {
+            if (row[0] != null) latestSnapshot = (Ticket) row[0];
+        }
+        ticketAccess.assertCanView(actor, latestSnapshot);
+
         List<TicketHistoryEntryDto> history = new ArrayList<>();
         Ticket previous = null;
+        ServiceLinkRevision lastRevision = null;
+        boolean recordedDelete = false;
 
         for (Object[] row : rows) {
             Ticket snapshot = (Ticket) row[0];
             ServiceLinkRevision revision = (ServiceLinkRevision) row[1];
             RevisionType type = (RevisionType) row[2];
+            lastRevision = revision;
 
             int revNumber = revision.getId();
             LocalDateTime when = LocalDateTime.ofInstant(
@@ -236,16 +250,31 @@ public class TicketServiceImpl implements TicketService {
             switch (type) {
                 case ADD -> history.add(new TicketHistoryEntryDto(
                         revNumber, when, actorName, actorId, "CREATED", null, null, null));
-                case DEL -> history.add(new TicketHistoryEntryDto(
-                        revNumber, when, actorName, actorId, "DELETED", null, null, null));
-                // NOTE: @SoftDelete deletes surface as MOD (not DEL) and the soft-delete
-                // flag is not an audited property, so a delete produces no field changes
-                // below. Verify empirically and special-case it if a DELETED row is wanted.
+                case DEL -> {
+                    history.add(new TicketHistoryEntryDto(
+                            revNumber, when, actorName, actorId, "DELETED", null, null, null));
+                    recordedDelete = true;
+                }
                 case MOD -> addFieldChanges(
                         history, previous, snapshot, revNumber, when, actorName, actorId);
             }
-            previous = snapshot;
+            if (snapshot != null) previous = snapshot;
         }
+
+        // @SoftDelete turns a delete into an UPDATE. Depending on the Hibernate version,
+        // Envers records that either as a DEL revision (handled above) or as a MOD whose
+        // only change is the non-audited soft-delete flag (no field rows, no DEL). If the
+        // ticket is now soft-deleted and no delete event was emitted, synthesize one from
+        // the final revision so "who deleted it, and when" stays visible.
+        boolean currentlyDeleted = ticketRepository.findById(id).isEmpty();
+        if (currentlyDeleted && !recordedDelete && lastRevision != null) {
+            LocalDateTime when = LocalDateTime.ofInstant(
+                    lastRevision.getRevisionDate().toInstant(), ZoneId.systemDefault());
+            history.add(new TicketHistoryEntryDto(lastRevision.getId(), when,
+                    lastRevision.getActorName(), lastRevision.getActorId(),
+                    "DELETED", null, null, null));
+        }
+
         return history;
     }
 
