@@ -4,7 +4,6 @@ import com.wesleyedwards.ServiceLink.AbstractPostgresIT;
 import com.wesleyedwards.ServiceLink.config.UserPrincipal;
 import com.wesleyedwards.ServiceLink.dtos.TicketHistoryEntryDto;
 import com.wesleyedwards.ServiceLink.dtos.TicketRequestDto;
-import com.wesleyedwards.ServiceLink.dtos.TicketResponseDto;
 import com.wesleyedwards.ServiceLink.dtos.TicketStatusUpdateDto;
 import com.wesleyedwards.ServiceLink.entities.Credentials;
 import com.wesleyedwards.ServiceLink.entities.Profile;
@@ -16,12 +15,15 @@ import com.wesleyedwards.ServiceLink.repositories.TicketRepository;
 import com.wesleyedwards.ServiceLink.repositories.UserRepository;
 import com.wesleyedwards.ServiceLink.service.TicketService;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.util.List;
 
@@ -44,6 +46,18 @@ class TicketHistoryTest extends AbstractPostgresIT {
     @Autowired private TicketService ticketService;
     @Autowired private UserRepository userRepository;
     @Autowired private TicketRepository ticketRepository;
+    @Autowired private PlatformTransactionManager txManager;
+
+    // Each mutation is run in its own transaction so (a) the session stays open across
+    // the service + entity->DTO mapping (no open-session-in-view outside a web request,
+    // which would otherwise trip LazyInitializationException on Ticket.comments), and
+    // (b) each commit produces exactly one Envers revision — mirroring one-request-one-tx.
+    private TransactionTemplate txTemplate;
+
+    @BeforeEach
+    void initTxTemplate() {
+        txTemplate = new TransactionTemplate(txManager);
+    }
 
     @AfterEach
     void clearSecurityContext() {
@@ -60,15 +74,17 @@ class TicketHistoryTest extends AbstractPostgresIT {
         // as the actor on each revision.
         authenticateAs(agent);
 
-        TicketResponseDto created = ticketService.createTicket(
+        Long ticketId = txTemplate.execute(s -> ticketService.createTicket(
                 new TicketRequestDto("Laptop won't boot", "Black screen on power-on",
                         TicketPriority.HIGH, "Hardware"),
-                requester.getUserId());
-        Long ticketId = created.id();
+                requester.getUserId()).id());
 
-        ticketService.updateTicketStatus(ticketId, new TicketStatusUpdateDto(TicketStatus.IN_PROGRESS));
-        ticketService.assignTicketToUser(ticketId, agent.getUserId());
-        ticketService.unassignTicket(ticketId);
+        txTemplate.executeWithoutResult(s ->
+                ticketService.updateTicketStatus(ticketId, new TicketStatusUpdateDto(TicketStatus.IN_PROGRESS)));
+        txTemplate.executeWithoutResult(s ->
+                ticketService.assignTicketToUser(ticketId, agent.getUserId()));
+        txTemplate.executeWithoutResult(s ->
+                ticketService.unassignTicket(ticketId));
 
         UserPrincipal agentPrincipal = new UserPrincipal(agent);
         List<TicketHistoryEntryDto> history = ticketService.getTicketHistory(ticketId, agentPrincipal);
@@ -94,7 +110,7 @@ class TicketHistoryTest extends AbstractPostgresIT {
         }
 
         // Soft delete: history must stay viewable (not 404) and end with a DELETED event.
-        ticketService.deleteTicketById(ticketId);
+        txTemplate.executeWithoutResult(s -> ticketService.deleteTicketById(ticketId));
         List<TicketHistoryEntryDto> afterDelete = ticketService.getTicketHistory(ticketId, agentPrincipal);
 
         TicketHistoryEntryDto last = afterDelete.get(afterDelete.size() - 1);
