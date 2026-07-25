@@ -111,6 +111,7 @@ public class TicketServiceImpl implements TicketService {
 
 
     @Override
+    @Transactional
     public TicketResponseDto assignTicketToUser(Long id, UUID userId) {
         Ticket foundTicket = checkTicketExists(id);
         User foundUser = checkUserExists(userId);
@@ -121,6 +122,7 @@ public class TicketServiceImpl implements TicketService {
     }
 
     @Override
+    @Transactional
     public TicketResponseDto unassignTicket(Long id) {
         Ticket foundTicket = checkTicketExists(id);
         foundTicket.setAssignedTo(null);
@@ -145,6 +147,7 @@ public class TicketServiceImpl implements TicketService {
     }
 
     @Override
+    @Transactional
     public TicketResponseDto updateTicketStatus(Long id, TicketStatusUpdateDto status) {
         Ticket foundTicket = checkTicketExists(id);
         if (!foundTicket.getStatus().canTransitionTo(status.ticketStatus())) throw new BadRequestException("Cannot " +
