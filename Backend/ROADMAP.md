@@ -147,7 +147,7 @@ Small, non-blocking cleanups to revisit during a dedicated code-revision pass:
 
 - ✅ **`PasswordResetToken` construction.** *Done.* Added `PasswordResetToken.issueFor(user, Duration)` — sets `token`/`user`/`expiresAt` directly, so tokens are valid-by-construction for the `nullable = false` columns. `forgotPassword` now calls the factory instead of raw setters. (Kept `@NoArgsConstructor` for JPA and `setUsed` for the reset-consumption path.)
 
-- **Duplicated `assertCanView`.** The ticket view-ownership check now lives in both `TicketServiceImpl` and `CommentServiceImpl`. Two copies is tolerable; extract a shared helper (e.g. a `TicketAccessPolicy` component) if a third copy appears.
+- ✅ **Duplicated `assertCanView`.** *Done.* Extracted into a `TicketAccessPolicy` interface (`service/`) + `TicketAccessPolicyImpl` (`@Service`, `service/serviceimpl/`), matching the codebase's interface+impl convention. Injected into both `TicketServiceImpl` and `CommentServiceImpl`; the four call sites (`getTicketById`, `getTicketHistory`, `getCommentsForTicket`, `searchComments`) delegate to it and the two private copies were removed. Service tests inject a real `@Spy new TicketAccessPolicyImpl()` (not a mock) so the ownership 403 assertions still exercise the real rule. Behavior/message unchanged. *(`assertSelfOrStaff`/`assertSelfOrAdmin` are user-id-based and single-copy — left as-is.)*
 
 - **Comment endpoint cleanups.** Default comment sort is `createdAt` descending — consider ascending (conversation order). Also: add leading slashes to the new `ticket/...` mappings for consistency, delete the commented-out pre-pagination `getCommentsForTicket`, remove the now-unused `List<Comment> findAllByTicketId(Long)` overload and stale `List` imports.
 
