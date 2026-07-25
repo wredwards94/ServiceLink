@@ -13,6 +13,7 @@ import com.wesleyedwards.ServiceLink.repositories.CommentRepository;
 import com.wesleyedwards.ServiceLink.repositories.TicketRepository;
 import com.wesleyedwards.ServiceLink.repositories.UserRepository;
 import com.wesleyedwards.ServiceLink.service.CommentService;
+import com.wesleyedwards.ServiceLink.service.TicketAccessPolicy;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -32,6 +33,7 @@ public class CommentServiceImpl implements CommentService {
     private final UserRepository userRepository;
     private final CommentMapper commentMapper;
     private static final Duration EDIT_WINDOW = Duration.ofMinutes(15);
+    private final TicketAccessPolicy ticketAccess;
 
 
     @Override
@@ -52,7 +54,7 @@ public class CommentServiceImpl implements CommentService {
 
     @Override
     public Page<CommentResponseDto> getCommentsForTicket(Long ticketId,  Pageable pageable, UserPrincipal actor) {
-        assertCanView(actor, checkTicketExists(ticketId));
+        ticketAccess.assertCanView(actor, checkTicketExists(ticketId));
 
         return actor.isStaff() ? commentRepository.findAllByTicketId(ticketId, pageable).map(commentMapper::entityToResponseDto)
                 : commentRepository.findAllByTicketIdAndInternalFalse(ticketId, pageable).map(commentMapper::entityToResponseDto);
@@ -84,7 +86,7 @@ public class CommentServiceImpl implements CommentService {
 
     @Override
     public Page<CommentResponseDto> searchComments(Long ticketId, String keyword, Pageable pageable, UserPrincipal actor) {
-        assertCanView(actor, checkTicketExists(ticketId));
+        ticketAccess.assertCanView(actor, checkTicketExists(ticketId));
         return actor.isStaff() ?
                 commentRepository.searchByTicketAndKeyword(ticketId, keyword, pageable).map(commentMapper::entityToResponseDto)
                 : commentRepository.searchByTicketAndKeywordAndInternalFalse(ticketId, keyword, pageable).map(commentMapper::entityToResponseDto);
@@ -96,14 +98,6 @@ public class CommentServiceImpl implements CommentService {
         if(optionalTicket.isEmpty()) throw new NotFoundException("Ticket " + id + " not found.");
 
         return optionalTicket.get();
-    }
-    private void assertCanView(UserPrincipal actor, Ticket ticket) {
-        if (actor.isStaff()) return;
-        boolean isRequester = ticket.getRequester() != null
-                && ticket.getRequester().getUserId().equals(actor.getUserId());
-        if (!isRequester) {
-            throw new ForbiddenException("You are not allowed to view this ticket");
-        }
     }
 
     private User checkUserExists(UUID userId) {

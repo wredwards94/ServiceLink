@@ -11,6 +11,7 @@ import com.wesleyedwards.ServiceLink.exceptions.NotFoundException;
 import com.wesleyedwards.ServiceLink.mappers.TicketMapper;
 import com.wesleyedwards.ServiceLink.repositories.TicketRepository;
 import com.wesleyedwards.ServiceLink.repositories.UserRepository;
+import com.wesleyedwards.ServiceLink.service.TicketAccessPolicy;
 import com.wesleyedwards.ServiceLink.service.TicketService;
 import com.wesleyedwards.ServiceLink.enums.Role;
 import com.wesleyedwards.ServiceLink.enums.TicketPriority;
@@ -41,6 +42,7 @@ public class TicketServiceImpl implements TicketService {
     private final UserRepository userRepository;
     private final TicketMapper ticketMapper;
     private final EntityManager em;
+    private final TicketAccessPolicy ticketAccess;
 
     @Override
     public List<TicketResponseDto> getAllTickets(UserPrincipal actor) {
@@ -64,7 +66,7 @@ public class TicketServiceImpl implements TicketService {
     @Override
     public TicketResponseDto getTicketById(Long id, UserPrincipal actor) {
         Ticket ticket = checkTicketExists(id);
-        assertCanView(actor, ticket);
+        ticketAccess.assertCanView(actor, ticket);
         return hideInternalComments(ticketMapper.entityToResponseDto(ticket), actor);
     }
 
@@ -204,7 +206,7 @@ public class TicketServiceImpl implements TicketService {
     @Transactional
     public List<TicketHistoryEntryDto> getTicketHistory(Long id, UserPrincipal actor) {
         Ticket ticket = checkTicketExists(id);
-        assertCanView(actor, ticket);
+        ticketAccess.assertCanView(actor, ticket);
 
         AuditReader reader = AuditReaderFactory.get(em);
 
@@ -315,16 +317,6 @@ public class TicketServiceImpl implements TicketService {
     // the actor's own id for a plain USER.
     private UUID requesterScope(UserPrincipal actor) {
         return isStaff(actor) ? null : actor.getUserId();
-    }
-
-    // A USER may only view a ticket they requested; staff may view any ticket.
-    private void assertCanView(UserPrincipal actor, Ticket ticket) {
-        if (actor.isStaff()) return;
-        boolean isRequester = ticket.getRequester() != null
-                && ticket.getRequester().getUserId().equals(actor.getUserId());
-        if (!isRequester) {
-            throw new ForbiddenException("You are not allowed to view this ticket");
-        }
     }
 
     // A USER may only act on their own id; staff may act on anyone's.
