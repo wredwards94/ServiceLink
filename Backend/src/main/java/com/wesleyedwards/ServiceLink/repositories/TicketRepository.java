@@ -52,7 +52,5 @@ public interface TicketRepository extends JpaRepository<Ticket, Long> {
     List<Ticket> findAllByRequester(UUID requesterId);
 
     @Query("SELECT t FROM Ticket t WHERE t.assignedTo.userId = :userId")
-    List<Ticket>findAllByAssignedToUser(UUID userId);
-
-//    List<Ticket> findAllByTicketId(List<Long> ids);
+    List<Ticket> findAllByAssignedToUser(UUID userId);
 }

@@ -12,6 +12,7 @@ import com.wesleyedwards.ServiceLink.service.CommentService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,12 +24,15 @@ import org.springframework.context.annotation.FilterType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.List;
 import java.util.UUID;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
@@ -57,6 +61,13 @@ class CommentControllerTest {
 
     private CommentResponseDto sampleComment(Long id, Long ticketId, UUID authorId) {
         return new CommentResponseDto(id, authorId, "John Doe", ticketId, "Please advise", null, false);
+    }
+
+    // Comments read oldest-first (conversation order), unlike tickets which default to newest-first.
+    private void assertCreatedAtAscending(Pageable pageable) {
+        Sort.Order order = pageable.getSort().getOrderFor("createdAt");
+        assertNotNull(order, "comments should be sorted by createdAt");
+        assertEquals(Sort.Direction.ASC, order.getDirection(), "comments should read oldest-first");
     }
 
     @Test
@@ -99,7 +110,9 @@ class CommentControllerTest {
                 .andExpect(jsonPath("$.content[0].ticketId").value(3))
                 .andExpect(jsonPath("$.page.totalElements").value(1));
 
-        verify(commentService).getCommentsForTicket(eq(3L), any(Pageable.class), any());
+        ArgumentCaptor<Pageable> pageable = ArgumentCaptor.forClass(Pageable.class);
+        verify(commentService).getCommentsForTicket(eq(3L), pageable.capture(), any());
+        assertCreatedAtAscending(pageable.getValue());
     }
 
     @Test
@@ -126,7 +139,9 @@ class CommentControllerTest {
                 .andExpect(jsonPath("$.content[0].id").value(1))
                 .andExpect(jsonPath("$.page.totalElements").value(1));
 
-        verify(commentService).searchComments(eq(3L), eq("advise"), any(Pageable.class), any());
+        ArgumentCaptor<Pageable> pageable = ArgumentCaptor.forClass(Pageable.class);
+        verify(commentService).searchComments(eq(3L), eq("advise"), pageable.capture(), any());
+        assertCreatedAtAscending(pageable.getValue());
     }
 
     @Test
