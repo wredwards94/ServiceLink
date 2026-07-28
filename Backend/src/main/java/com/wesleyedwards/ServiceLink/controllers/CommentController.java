@@ -43,8 +43,7 @@ public class CommentController {
         return ResponseEntity.ok(commentService.updateComment(commentId, updatedComment, actor));
     }
 
-//    Add comment searching using filters and/or keywords
-    @GetMapping("ticket/{ticketId}/search")
+    @GetMapping("/ticket/{ticketId}/search")
     public ResponseEntity<Page<CommentResponseDto>> searchComments(
             @PathVariable Long ticketId,
             @RequestParam String keyword,
@@ -52,11 +51,10 @@ public class CommentController {
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(defaultValue = "createdAt") String sortBy,
             @AuthenticationPrincipal UserPrincipal actor) {
-        Pageable pageable = PageRequest.of(page, size, Sort.by(sortBy).descending());
+        Pageable pageable = PageRequest.of(page, size, Sort.by(sortBy).ascending());
         return ResponseEntity.ok(commentService.searchComments(ticketId, keyword, pageable, actor));
     }
 
-//    Add Pagination for future
     @GetMapping("/ticket/{ticketId}")
     public ResponseEntity<Page<CommentResponseDto>> getCommentsForTicket(
             @PathVariable Long ticketId,
@@ -64,7 +62,7 @@ public class CommentController {
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(defaultValue = "createdAt") String sortBy,
             @AuthenticationPrincipal UserPrincipal actor) {
-        Pageable pageable = PageRequest.of(page, size, Sort.by(sortBy).descending());
+        Pageable pageable = PageRequest.of(page, size, Sort.by(sortBy).ascending());
         return ResponseEntity.ok(commentService.getCommentsForTicket(ticketId, pageable, actor));
     }
 
