@@ -1,10 +1,11 @@
 export interface CommentResponse {
   id: number,
-  authorId: number,
+  authorId: string,
   authorName: string,
   ticketId: number,
   content: string,
-  createdAt: string
+  createdAt: string,
+  internal: boolean
 }
 
 export interface CommentRequest {

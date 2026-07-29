@@ -42,17 +42,6 @@
 
       <div class="grid grid-cols-2 gap-4">
         <div>
-          <label class="block text-sm text-gray-400 mb-1">Status</label>
-          <select
-            [(ngModel)]="ticket.status"
-            class="w-full bg-gray-900 text-white text-sm rounded-lg px-4 py-2 border border-gray-700 focus:border-indigo-500 outline-none">
-            @for (status of statuses; track status) {
-              <option [value]="status">{{ status }}</option>
-            }
-          </select>
-        </div>
-
-        <div>
           <label class="block text-sm text-gray-400 mb-1">Priority</label>
           <select
             [(ngModel)]="ticket.priority"
