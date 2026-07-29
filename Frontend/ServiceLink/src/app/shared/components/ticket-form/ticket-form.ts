@@ -2,7 +2,7 @@ import { Component, EventEmitter, Output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { TicketService } from '../../../core/services/ticket.service';
 import { AuthService } from '../../../core/services/auth.service';
-import { Priority, Status, TicketRequest } from '../../../models/ticket.model';
+import { Priority, TicketRequest } from '../../../models/ticket.model';
 
 @Component({
   selector: 'app-ticket-form',
@@ -21,13 +21,11 @@ export class TicketForm {
 
   isSubmitting: boolean = false;
 
-  statuses = Object.values(Status);
   priorities = Object.values(Priority);
 
   ticket: TicketRequest = {
     title: '',
     description: '',
-    status: Status.NEW,
     priority: Priority.LOW,
     category: '',
   };
