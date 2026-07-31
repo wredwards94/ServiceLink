@@ -1,6 +1,6 @@
 # Frontend resync — reconnect the Angular app to the current backend API
 
-**Status:** step 1 (models) largely **done**; steps 2–6 open. Written 2026-07-29, against `main` @ `23ecb06` (after `chore/comment-endpoint-cleanups` merged as PR #7).
+**Status:** steps 1–2 (models, services) **done**; steps 3–6 open. Written 2026-07-29 against `main` @ `23ecb06`; revised 2026-07-30 against `main` @ `635a203` (after step 2 merged as PR #9).
 
 **Handoff doc.** Chat history doesn't sync between machines — this file, `session-context.md`, `Backend/ROADMAP.md`, and the git history are the durable record (see `session-context.md` §9).
 
@@ -38,7 +38,9 @@ This lands before **attachments** (the last Phase 2 item) because attachments ne
 
 ---
 
-## Already done (step 1 — models)
+## Already done (steps 1–2)
+
+### Step 1 — models (commit `7a3455e`, PR #8)
 
 These were in the working tree uncommitted and are now committed, so they travel with the repo:
 
@@ -55,22 +57,33 @@ These were in the working tree uncommitted and are now committed, so they travel
 
 **Lesson for the handoff:** that work sat uncommitted, so it would have been lost moving machines. Commit before switching.
 
+### Step 2 — services (commit `91d1fb9`, PR #9)
+
+- **`core/services/ticket.service.ts`** — `assignTicket` `PATCH` → **`PUT`**; `createTicket` dropped the `requesterId` arg + query param; added `updateTicketStatus(id, status)` → `PATCH /{id}/status` with body `{ ticketStatus }`.
+- **`core/services/comment.service.ts`** — `updateComment` `PATCH` → **`PUT`**; `addComment` dropped the `authorId` arg + query param; `getCommentsForTicket` retyped to `Observable<PageResponse<CommentResponse>>` and now takes `page`/`size`.
+- **Call sites updated:** `ticket-form.ts` (`createTicket`), `ticket-detail.ts` (`addComment`).
+
+**Two corrections were needed on top** — both generic-nesting traps worth recording:
+
+1. `getCommentsForTicket` was first typed `PageResponse<CommentResponse[]>`. `PageResponse<T>` already declares `content: T[]`, so `T` is the **element** type — passing the array type yields `content: CommentResponse[][]`. A follow-up attempt then dropped the `Observable<>` wrapper from the signature, producing *"Type `Observable<…>` is missing the following properties … `content`, `page`"*. The correct form is `Observable<PageResponse<CommentResponse>>` on **both** the return type and the `http.get<…>` generic: the generic describes the JSON body the server sends, and the return type is that same thing wrapped in `Observable`.
+2. `addComment` kept a dead `authorId` **parameter** after the `?authorId=` query string was removed — it still compiled, and `ticket-detail.ts` went on passing an argument into the void. Removing the parameter is what surfaces the call site.
+
 ---
 
 ## What's actually broken
 
-Verified against `TicketController`, `CommentController`, `UserController`, `SecurityConfig`, and the DTO records. Line numbers are as of `23ecb06`; items marked ✅ are resolved by the committed model work above.
+Verified against `TicketController`, `CommentController`, `UserController`, `SecurityConfig`, and the DTO records. Line numbers were accurate as of `23ecb06` and have drifted since — treat them as hints, not addresses. Items marked ✅ are resolved by the committed work above.
 
 ### Runtime failures
 
 | # | Where | Problem |
 |---|-------|---------|
-| 1 | `core/services/ticket.service.ts:56` | `assignTicket` sends `PATCH /{id}/assign/{userId}`; backend maps **`PUT`** → 405 |
-| 2 | `core/services/comment.service.ts:35` | `updateComment` sends `PATCH /{commentId}`; backend maps **`PUT`** → 405. `SecurityConfig` also only lets a USER through on `PUT /api/comments/**`; PATCH falls to the ADMIN/AGENT rule |
-| 3 | `core/services/comment.service.ts:27` | `getCommentsForTicket` typed `CommentResponse[]`, but the endpoint returns a `PagedModel` object — iterating it breaks |
+| 1 | `core/services/ticket.service.ts` | ✅ **fixed** (step 2). `assignTicket` sent `PATCH /{id}/assign/{userId}`; backend maps **`PUT`** → 405 |
+| 2 | `core/services/comment.service.ts` | ✅ **fixed** (step 2). `updateComment` sent `PATCH /{commentId}`; backend maps **`PUT`** → 405. `SecurityConfig` also only lets a USER through on `PUT /api/comments/**`; PATCH fell to the ADMIN/AGENT rule |
+| 3 | `core/services/comment.service.ts` | ✅ **fixed** (step 2). `getCommentsForTicket` was typed `CommentResponse[]`, but the endpoint returns a `PagedModel` object — iterating it broke |
 | 4 | `models/ticket.model.ts:25` | ✅ **fixed.** `PageResponse<T>` expected flat metadata (`totalElements`, `number`, `first`…); `VIA_DTO` nests it under `$.page`, so everything except `content` read `undefined` |
 | 5 | `models/ticket.model.ts:34` | ✅ **fixed** (enum values). `Status` had 3 of the backend's 6. Still open downstream: dashboard counts, the filter dropdown, and the badge styling in step 3 |
-| 6 | — | **No way to change status.** `PATCH /api/tickets/{id}/status` is never called, and `status` was removed from the update DTO, so the workflow the state machine exists to serve is unreachable |
+| 6 | `core/pages/tickets/ticket-detail/` | **Still open — no way to change status.** Step 2 added `updateTicketStatus` to `ticket.service.ts`, but **nothing calls it** (`grep` finds only the definition), so the workflow the state machine exists to serve is still unreachable. One component away rather than absent — this is step 3's headline item |
 | 7 | `core/pages/tickets/ticket-detail/ticket-detail.ts:62` | Calls `getUserById(ticket.assignedTo)` unconditionally; an unassigned ticket sends `assignedTo: null` → request to `/api/users/null` |
 | 8 | `models/user.model.ts:20` | ✅ **fixed.** `Role` was `'Admin'`/`'Agent'`/`'User'`; backend serializes `ADMIN`/`AGENT`/`USER`. Was latent — `sidebar.html:18` compares the literal `'ADMIN'` and worked — but `roleGuard` would break the moment anyone passed `Role.ADMIN` |
 
@@ -78,7 +91,7 @@ Verified against `TicketController`, `CommentController`, `UserController`, `Sec
 
 Harmless only because the backend sets `spring.jackson.deserialization.fail-on-unknown-properties=false` and Spring ignores unknown query params. Misleading to read.
 
-9. `createTicket` appends `?requesterId=`; `addComment` appends `?authorId=`. Identity comes from the JWT principal — both are dead. **Still open** (step 2).
+9. ✅ **fixed** (step 2). `createTicket` appended `?requesterId=`; `addComment` appended `?authorId=`. Identity comes from the JWT principal — both were dead, and both the params and the arguments are now gone.
 10. ✅ **fixed.** `TicketRequest.status` and the status `<select>` in `ticket-form.html`. `TicketRequestDto` has no `status` field; new tickets are always `NEW`.
 
 ### Model gaps
@@ -93,35 +106,59 @@ Harmless only because the backend sets `spring.jackson.deserialization.fail-on-u
 
 ---
 
+## Found while implementing (2026-07-30)
+
+Four things the original inventory missed. Recorded so the next session doesn't re-derive them.
+
+15. **`Ticket.comments` has no `@OrderBy`** — verified, there is no `@OrderBy` *anywhere* in the backend. `ticket-detail` iterates `ticket.comments` (serialized by the ticket mapper), so its order is whatever Postgres returns. PR #7's oldest-first guarantee applies **only** to `GET /api/comments/ticket/{id}`, which the frontend never calls. **Consequence: the verification bullet below about comments reading oldest-first cannot pass as the code stands.** Two ways to fix it — switch `ticket-detail` to the comment endpoint (frontend, step 3; also puts the retyped service method into real use), or add `@OrderBy("createdAt ASC")` to `Ticket.comments` (backend, one line). Latent rather than visible: a simple table scan usually returns insertion order today, so it probably *looks* correct.
+
+16. **The status state machine is restrictive and has no self-transitions** — from `TicketStatus.canTransitionTo`:
+
+    | From | Allowed targets |
+    |------|-----------------|
+    | `NEW` | `IN_PROGRESS` |
+    | `IN_PROGRESS` | `ON_HOLD`, `RESOLVED` |
+    | `ON_HOLD` | `IN_PROGRESS` |
+    | `RESOLVED` | `CLOSED`, `REOPENED` |
+    | `CLOSED` | `REOPENED` |
+    | `REOPENED` | `IN_PROGRESS` |
+
+    A dropdown listing all six values would 400 on most selections. Step 3 needs a `Record<Status, Status[]>` map mirroring this, kept beside the `Status` enum under the same "mirrors backend" comment convention the enums already use.
+
+17. **The status-badge `NgClass` block is triplicated** across `dashboard.html`, `ticket-list.html`, and `ticket-detail.html`, each covering 3 of 6 statuses. Worth collapsing into one exported `Record<Status, string>` rather than extending the same block in three places. **Caveat:** Tailwind 4 detects classes by scanning source files, so the map's values must be complete literal class strings — never interpolated like `` `text-${color}-400` `` — or the utilities won't be generated.
+
+18. **Two pre-existing `NG8113` build warnings**, unrelated to this resync: `App` declares `Login`, and `TicketList` declares `TicketForm`, in their `imports` arrays without using them in their templates. Harmless; trivial cleanup if you want quiet build output.
+
+---
+
 ## Plan
 
-### 0. Get the toolchain running
+### 0. Get the toolchain running ✅ DONE (locally)
 
-Nothing is verifiable until this passes. `npm install`, then `npm run build` and `npm test` to capture the **baseline** failure count.
+`node_modules` is installed and **`npm run build` is clean** as of `635a203` (two pre-existing `NG8113` warnings — see item 18). On a fresh machine this still starts with `npm install`.
+
+⚠️ **The `npm test` baseline was never captured.** Do that before touching the specs in step 5, so the stub-spec failures (item 14) aren't misread as regressions introduced by this work.
 
 ### 1. Models — `src/app/models/` ✅ DONE
 
-See *Already done* above. The models now match the backend DTOs; everything below builds on that.
+See *Already done → step 1* above. The models now match the backend DTOs; everything below builds on that.
 
-### 2. Services — `src/app/core/services/`
+### 2. Services — `src/app/core/services/` ✅ DONE
 
-- **`ticket.service.ts`**: `assignTicket` → `PUT`. Drop the `requesterId` arg + query param from `createTicket`. Add:
-  ```ts
-  updateTicketStatus(id: number, status: Status): Observable<TicketResponse> {
-    return this.http.patch<TicketResponse>(`${this.apiUrl}/${id}/status`, { ticketStatus: status });
-  }
-  ```
-  The body key is **`ticketStatus`**, matching `TicketStatusUpdateDto`'s record component — easy to get wrong, and a mismatch fails validation with a 400.
-- **`comment.service.ts`**: `updateComment` → `PUT`. Drop the `authorId` arg + param from `addComment`. Retype `getCommentsForTicket` to `Observable<PageResponse<CommentResponse>>` and accept `page`/`size`.
+See *Already done → step 2* above, including the two generic-nesting corrections. Note the status body key is **`ticketStatus`**, matching `TicketStatusUpdateDto`'s record component — a mismatch fails validation with a 400.
 
-### 3. Components
+### 3. Components ⬅️ NEXT
 
-- **`shared/components/ticket-form/`**: the status `<select>`, `status` field, and `statuses` list are already gone. Still to do: drop the `requesterId` argument once `createTicket`'s signature changes in step 2.
-- **`ticket-detail.ts`**: guard the `assignedTo` lookup — `if (ticket.assignedTo) { … }`, else leave `assignedToProfile` null; the template at line 46 already renders "Unassigned". Then add the **status-change control**: a `<select>` over `Status` calling `updateTicketStatus`, refreshing the ticket on success.
+- **`models/ticket.model.ts`**: add the `Record<Status, Status[]>` transition map from item 16, beside the `Status` enum.
+- **`ticket-detail.ts`**: guard the `assignedTo` lookup — `if (ticket.assignedTo) { … }`, else leave `assignedToProfile` null; the template already renders "Unassigned". Then add the **status-change control**: a `<select>` driven by the transition map for the ticket's current status, calling `updateTicketStatus` and refreshing the ticket on success.
   - Show it **only for staff** (`ADMIN`/`AGENT`). `SecurityConfig` restricts `PATCH /api/tickets/**` to ADMIN/AGENT, so a USER gets a 403.
-  - An **illegal transition returns 400** with a message from `canTransitionTo` — surface it instead of failing silently. Valid moves are defined on `TicketStatus.canTransitionTo`; there are no self-transitions.
-- **`dashboard.ts`** / **`ticket-list.ts`**: no signature changes, but revisit the counts now that six statuses exist — `openTickets` currently counts only `NEW`.
-- **Badges** in `dashboard.html:56-58`, `ticket-list.html:71-73`, `ticket-detail.html:19-21`: each `NgClass` block covers 3 statuses. Extend to all 6, same pattern. (They compare string literals, not the enum, so they don't break at compile time — they just render unstyled.)
+  - An **illegal transition returns 400** with a message from `canTransitionTo` — surface it instead of failing silently. Keep this handler even with the transition map in place: it's the safety net if the client mirror ever drifts from the backend enum.
+  - Render nothing (or a disabled control) when the allowed list is empty.
+  - Optionally switch the comment list from `ticket.comments` to `getCommentsForTicket` — see item 15.
+- **`dashboard.ts`**: `openTickets` counts only `NEW`; with six statuses it should count everything non-terminal — `NEW`, `IN_PROGRESS`, `ON_HOLD`, `REOPENED`. **`ticket-list.ts`** needs no change: `statuses = Object.values(Status)` already picks up all six.
+- **Badges** in `dashboard.html`, `ticket-list.html`, `ticket-detail.html`: each `NgClass` block covers 3 of 6 statuses. Prefer the shared map in item 17 over extending the same block three times. (They compare string literals, not the enum, so they don't break at compile time — they just render unstyled.)
+
+*Already done in step 1:* `shared/components/ticket-form/` — the status `<select>`, `status` field, and `statuses` list are gone; the `requesterId` argument went with step 2.
 
 ### 4. Hygiene
 
@@ -150,12 +187,12 @@ Add a **Frontend** section to `Backend/ROADMAP.md` (or promote it to a repo-root
    - Postgres on `localhost:5433` (db `postgres`, user `postgres`, pass `root`), then `cd Backend && ./mvnw spring-boot:run`, then `npm start`.
    - Log in → dashboard lists tickets, counts look right.
    - Create a ticket → lands as `NEW`.
-   - As ADMIN/AGENT: change status via the new control, **including one illegal transition** to confirm the 400 surfaces; assign a ticket (confirms `PUT`); open an **unassigned** ticket and confirm no `/api/users/null` in the network tab.
-   - Add a comment, then edit it (confirms `PUT`); confirm comments read **oldest-first** — that ordering changed in PR #7.
+   - As ADMIN/AGENT: walk `NEW → IN_PROGRESS → RESOLVED → CLOSED → REOPENED` via the new control, confirming the dropdown offers **only legal moves** at each step (item 16). Force one illegal transition (e.g. via devtools) to confirm the 400 surfaces. Assign a ticket (confirms `PUT`); open an **unassigned** ticket and confirm no `/api/users/null` in the network tab.
+   - Add a comment, then edit it (confirms `PUT`). **Comments read oldest-first only if `ticket-detail` was switched to the comment endpoint** — `ticket.comments` has no guaranteed order (item 15). Skip this check if that change wasn't made; don't read a passing result as proof the ordering is pinned.
    - As a USER: only your own tickets are visible, and the status control is hidden.
 4. Backend is untouched, so `cd Backend && ./mvnw verify` should be unaffected — worth one run to confirm. Note `src/main/resources/application.properties` is **gitignored**, so it won't exist on a fresh clone; recreate it for local runs (dev datasource + `jwt.secret`).
 
-**Branch:** `fix/frontend-api-resync`, PR to `main`, conventional-commit messages (`fix(frontend): …`).
+**Branches:** step 1 → PR #8 (`7a3455e`); step 2 → `fix/frontend-api-resync`, PR #9 (`91d1fb9`, merged). Step 3 gets a fresh branch off `main`; conventional-commit messages (`fix(frontend): …`).
 
 ---
 
@@ -164,5 +201,10 @@ Add a **Frontend** section to `Backend/ROADMAP.md` (or promote it to a repo-root
 No UI yet for: **ticket history timeline** (`GET /api/tickets/{id}/history`), **unassign**, **bulk status/assign**, **advanced search**, **comment search + pagination controls**, the **internal-comment toggle**, **password change/forgot/reset**, **role management**, **suspend/ban**, and **user registration**. Each is additive once the contract is correct.
 
 Also unaddressed: `TicketResponseDto` returns `assignedTo`/`requester` as bare UUIDs, so any view without a follow-up `getUserById` shows a raw UUID. `ticket-detail` resolves them; list views don't. Fixing it properly means adding display names to the DTO — a backend change worth its own decision.
+
+Two backend changes worth considering later, both surfaced by items 15–16:
+
+- **Expose allowed transitions from the backend** (e.g. on `TicketResponseDto`, or a `GET /api/tickets/{id}/transitions`). The step-3 transition map duplicates `TicketStatus.canTransitionTo` on the client, which is exactly the kind of drift this whole resync exists to clean up. A server-provided list removes the duplicate.
+- **`@OrderBy("createdAt ASC")` on `Ticket.comments`** — the one-line alternative to routing `ticket-detail` through the comment endpoint, and it fixes the ordering for every consumer of the embedded list rather than just this one view.
 
 **After this:** attachments — the last Phase 2 item.
