@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { PageResponse, TicketRequest, TicketResponse } from '../../models/ticket.model';
+import { PageResponse, Status, TicketRequest, TicketResponse } from '../../models/ticket.model';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../environments/environment';
 import { Observable } from 'rxjs';
@@ -20,12 +20,16 @@ export class TicketService {
     return this.http.get<TicketResponse>(`${this.apiUrl}/${id}`);
   }
 
-  createTicket(ticket: TicketRequest, requesterId: string): Observable<TicketResponse> {
-    return this.http.post<TicketResponse>(`${this.apiUrl}/newticket/requester?requesterId=${requesterId}`, ticket);
+  createTicket(ticket: TicketRequest): Observable<TicketResponse> {
+    return this.http.post<TicketResponse>(`${this.apiUrl}/newticket/requester`, ticket);
   }
 
   updateTicket(id: number, ticket: TicketRequest): Observable<TicketResponse> {
     return this.http.patch<TicketResponse>(`${this.apiUrl}/${id}`, ticket);
+  }
+
+  updateTicketStatus(id: number, status: Status): Observable<TicketResponse> {
+    return this.http.patch<TicketResponse>(`${this.apiUrl}/${id}/status`, { ticketStatus: status });
   }
 
   deleteTicket(id: number): Observable<void> {
@@ -40,8 +44,14 @@ export class TicketService {
     return this.http.get<TicketResponse[]>(`${this.apiUrl}/priority/${priority}`);
   }
 
-  searchTickets(keyword: string, page: number = 0, size: number = 10): Observable<PageResponse<TicketResponse>> {
-    return this.http.get<PageResponse<TicketResponse>>(`${this.apiUrl}/search?keyword=${keyword}&page=${page}&size=${size}`);
+  searchTickets(
+    keyword: string,
+    page: number = 0,
+    size: number = 10,
+  ): Observable<PageResponse<TicketResponse>> {
+    return this.http.get<PageResponse<TicketResponse>>(
+      `${this.apiUrl}/search?keyword=${keyword}&page=${page}&size=${size}`,
+    );
   }
 
   getTicketsByRequester(requesterId: string): Observable<TicketResponse[]> {
@@ -53,6 +63,6 @@ export class TicketService {
   }
 
   assignTicket(ticketId: number, userId: string): Observable<TicketResponse> {
-    return this.http.patch<TicketResponse>(`${this.apiUrl}/${ticketId}/assign/${userId}`, {});
+    return this.http.put<TicketResponse>(`${this.apiUrl}/${ticketId}/assign/${userId}`, {});
   }
 }
