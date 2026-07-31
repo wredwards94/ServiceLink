@@ -91,7 +91,7 @@ export class TicketDetail implements OnInit {
     const comment: CommentRequest = { content: this.newComment };
     this.isSubmitting = true;
 
-    this.commentService.addComment(this.ticket.id, authorId, comment).subscribe({
+    this.commentService.addComment(this.ticket.id, comment).subscribe({
       next: (comment) => {
         this.ticket!.comments.push(comment);
         this.newComment = '';

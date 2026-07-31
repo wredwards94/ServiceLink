@@ -41,7 +41,7 @@ export class TicketForm {
     if (!requesterId) return;
 
     this.isSubmitting = true;
-    this.ticketService.createTicket(this.ticket, requesterId).subscribe({
+    this.ticketService.createTicket(this.ticket).subscribe({
       next: () => {
         this.isSubmitting = false;
         this.ticketCreated.emit();
