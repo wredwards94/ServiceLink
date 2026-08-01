@@ -1,6 +1,7 @@
 package com.wesleyedwards.ServiceLink.entities;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import jdk.jfr.BooleanFlag;
 import lombok.Getter;
@@ -11,6 +12,7 @@ import org.hibernate.annotations.SoftDelete;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Entity
 @Getter
@@ -45,4 +47,8 @@ public class Comment {
 
     @BooleanFlag
     private boolean internal = false;
+
+    @OneToMany(mappedBy = "comment", cascade = CascadeType.REMOVE)
+    @JsonIgnore
+    private List<Attachment> attachments;
 }
