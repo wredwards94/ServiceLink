@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { UserIdResponse} from '../../models/user.model';
+import { Role, UserIdResponse } from '../../models/user.model';
 import { environment } from '../../../environments/environment';
 import { Credentials} from '../../models/user.model';
 import { Observable, tap } from 'rxjs';
@@ -43,5 +43,10 @@ export class AuthService {
 
   isLoggedIn(): boolean {
     return !!this.getToken();
+  }
+
+  isStaff(): boolean {
+    const role = this.getRole();
+    return role === Role.ADMIN || role === Role.AGENT;
   }
 }

@@ -35,8 +35,10 @@ export class TicketDetail implements OnInit {
   assignedToProfile: Profile | null = null;
   newComment: string = '';
   isSubmitting: boolean = false;
+  isStaff: boolean = false;
 
   ngOnInit(): void {
+    this.isStaff = this.authService.isStaff();
     const id = this.route.snapshot.paramMap.get('id');
     if (id) {
       this.loadTicket(Number(id));
@@ -59,18 +61,23 @@ export class TicketDetail implements OnInit {
             this.cdr.detectChanges();
           },
         });
-        this.userService.getUserById(ticket.assignedTo).subscribe({
-          next: (assignedTo) => {
-            this.assignedTo = assignedTo;
-            console.log('Assigned Profile:', assignedTo.profile);
-            this.assignedToProfile = assignedTo.profile;
-            this.cdr.detectChanges();
-          },
-          error: (error) => {
-            console.error('Failed to load user profile', error);
-            this.cdr.detectChanges();
-          },
-        });
+
+        if (ticket.assignedTo) {
+          this.userService.getUserById(ticket.assignedTo).subscribe({
+            next: (assignedTo) => {
+              this.assignedTo = assignedTo;
+              this.assignedToProfile = assignedTo.profile;
+              this.cdr.detectChanges();
+            },
+            error: (error) => {
+              console.error('Failed to load user profile', error);
+              this.cdr.detectChanges();
+            },
+          });
+        } else {
+          this.assignedToProfile = null;
+          this.assignedTo = null;
+        }
         this.isLoading = false;
         this.cdr.detectChanges();
       },
@@ -102,7 +109,7 @@ export class TicketDetail implements OnInit {
         console.error('Failed to add comment', error);
         this.isSubmitting = false;
         this.cdr.detectChanges();
-      }
+      },
     });
   }
 

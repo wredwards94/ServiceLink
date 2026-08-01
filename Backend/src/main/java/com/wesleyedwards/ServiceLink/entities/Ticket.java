@@ -1,6 +1,7 @@
 package com.wesleyedwards.ServiceLink.entities;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import com.wesleyedwards.ServiceLink.enums.TicketPriority;
 import com.wesleyedwards.ServiceLink.enums.TicketStatus;
@@ -61,4 +62,9 @@ public class Ticket {
     @JsonManagedReference(value = "commentAuthor")
     @NotAudited
     private List<Comment> comments;
+
+    @OneToMany(mappedBy = "ticket", cascade = CascadeType.REMOVE)
+    @JsonIgnore
+    @NotAudited
+    private List<Attachment> attachments;
 }

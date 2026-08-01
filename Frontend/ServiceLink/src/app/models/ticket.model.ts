@@ -48,3 +48,12 @@ export enum Priority {
   HIGH = 'HIGH',
   CRITICAL = 'CRITICAL',
 }
+
+export const ALLOWED_TRANSITIONS: Record<Status, Status[]> = {
+  [Status.NEW]: [Status.IN_PROGRESS],
+  [Status.IN_PROGRESS]: [Status.ON_HOLD, Status.RESOLVED],
+  [Status.ON_HOLD]: [Status.IN_PROGRESS],
+  [Status.RESOLVED]: [Status.CLOSED, Status.REOPENED],
+  [Status.REOPENED]: [Status.IN_PROGRESS],
+  [Status.CLOSED]: [Status.REOPENED],
+};
