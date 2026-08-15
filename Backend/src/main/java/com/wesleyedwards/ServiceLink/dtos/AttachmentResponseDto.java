@@ -5,10 +5,10 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
-public record AttachmentResponseDto(long Id,
+public record AttachmentResponseDto(Long id,
                                     String filename,
                                     String contentType,
                                     long size,
                                     UUID uploader,
-                                    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime createdAt) {
+                                    @JsonFormat(pattern = "MM/dd/yyyy hh:mm a") LocalDateTime createdAt) {
 }

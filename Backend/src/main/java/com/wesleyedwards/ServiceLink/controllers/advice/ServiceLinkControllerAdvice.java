@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 import java.util.stream.Collectors;
 
@@ -53,6 +54,14 @@ public class ServiceLinkControllerAdvice {
                 .map(error -> error.getField() + ": " + error.getDefaultMessage())
                 .collect(Collectors.joining(", "));
         return new ErrorDto(message);
+    }
+
+    // Thrown by the multipart resolver before the controller runs, so the service's own
+    // size check never sees the request — without this it would surface as a raw 500.
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ErrorDto handleMaxUploadSizeExceededException(MaxUploadSizeExceededException ex) {
+        return new ErrorDto("Attachment exceeds the maximum size of 10MB.");
     }
 
     @ResponseStatus(HttpStatus.UNAUTHORIZED)
