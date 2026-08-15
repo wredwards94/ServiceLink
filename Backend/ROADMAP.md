@@ -42,9 +42,9 @@ Along the way, `isDisabled` was repurposed into a distinct **suspend/ban** featu
 
 ---
 
-## Phase 2 — Core ticketing capabilities (next)
+## Phase 2 — Core ticketing capabilities ✅ COMPLETE
 
-The features that make the system genuinely useful for day-to-day IT support.
+The features that make the system genuinely useful for day-to-day IT support. All items done: richer status lifecycle, ticket history, attachments, internal comments, ownership authorization, bulk actions, and comment search/pagination. Every one of them now also has a UI (see *Frontend* below).
 
 **Richer status lifecycle.** ✅ *Done.*
 Expanded `TicketStatus` to `NEW, IN_PROGRESS, ON_HOLD, RESOLVED, REOPENED, CLOSED`, with a `canTransitionTo(...)` state-machine on the enum defining the allowed moves (resolve-then-confirm, reopen from CLOSED/RESOLVED, no self-transitions). New tickets default to `NEW` and `status` was removed from the create/update DTOs, so status changes only through a dedicated, validated path: `PATCH /api/tickets/{id}/status` (with `TicketStatusUpdateDto`) rejects illegal transitions with a 400. Reopen is just a transition to `REOPENED` via that endpoint. Covered by enum transition tests and service tests (valid + illegal). *(Reopen-by-requester stays agent-gated for now — revisit with ownership-based authorization.)*
@@ -52,8 +52,8 @@ Expanded `TicketStatus` to `NEW, IN_PROGRESS, ON_HOLD, RESOLVED, REOPENED, CLOSE
 **Ticket history / audit trail.** ✅ *Done.*
 Implemented with **Hibernate Envers** (`@Audited` on `Ticket`) rather than manual writes in each mutator — a single `ServiceLinkRevisionListener` stamps the acting user (`actorName` / `actorId`) onto a custom `ServiceLinkRevision` (`@RevisionEntity`) by reading the JWT principal from the `SecurityContext` at flush time, so **every** write path is captured (including the mutators that don't take a `UserPrincipal`) with no signature changes. `requester` / `assignedTo` use `RelationTargetAuditMode.NOT_AUDITED` (record the FK without auditing `User`); `comments` is `@NotAudited`. Exposed at `GET /api/tickets/{id}/history` (ownership-gated via `assertCanView` — a USER sees only their own tickets' history): `getTicketHistory` reads revisions via `AuditReader.forRevisionsOfEntity`, diffs consecutive snapshots into per-field `MODIFIED` events (title, description, status, priority, category, assignedTo→username) plus `CREATED` / `DELETED` rows (`TicketHistoryEntryDto`). ✅ *Soft-delete + test follow-ups closed:* a deleted ticket's history stays viewable — `getTicketHistory` derives existence + ownership from the Envers revision history instead of the `@SoftDelete`-filtered `findById` (which used to 404), and ends the timeline with a `DELETED` event handled robustly for either Envers behavior (a `DEL` revision, or a `MOD` that only flips the non-audited soft-delete flag, synthesized from the terminal revision). Covered by a Testcontainers integration test (`TicketHistoryTest`, extending a shared `AbstractPostgresIT`) that drives create→status→assign→unassign→delete and asserts the timeline, actor stamping, ordering, and the `DELETED` event — green on CI.
 
-**Attachments.**
-File and screenshot uploads on tickets and comments — close to essential for IT support and currently absent.
+**Attachments.** ✅ *Done.*
+File and screenshot uploads on tickets and comments (`d7c9e07`). `AttachmentController` exposes upload to a ticket or a comment (multipart `file` part), list per ticket/comment, download (streams bytes with `Content-Disposition`), and delete. `AttachmentService` enforces ticket ownership and the internal-comment rule, so a USER cannot reach a file hanging off a staff-only note. `SecurityConfig` admits USER on GET/POST and restricts DELETE to ADMIN/AGENT. Frontend UI landed in PR #14 — see *Frontend* below. *(Files are stored as bytes in the DB; moving to object storage is a Phase 4 concern if volume grows.)*
 
 **Internal vs. public comments.** ✅ *Done.*
 Added an `internal` boolean to `Comment` (default public). Only staff can create internal comments — `addCommentToTicket` forces `internal = actor.isStaff() && request.internal()`, so a USER's `internal=true` is ignored. Reads filter it out for non-staff: `getCommentsForTicket` and `searchComments` branch on `isStaff()` (staff → all; requester → `...InternalFalse` variants), and both also gate ticket ownership via `assertCanView` (a USER only sees comments on their own tickets, 403 otherwise). Exposed on `CommentResponseDto`. Covered by internal-filter, view-gate, and create-guard tests. ✅ *Follow-up closed:* the comments **embedded in `TicketResponseDto`** (the ticket mapper serializes the full list) now also respect the filter — `TicketServiceImpl` strips internal comments for non-staff across every ticket read path (get/by-status/by-priority/search/advancedSearch/by-requester/assigned), so the leak on `GET /api/tickets/{id}` and friends is closed.
@@ -77,6 +77,30 @@ Brought comments to parity with tickets: `GET /api/comments/ticket/{ticketId}` i
 
 ---
 
+## Frontend — `Frontend/ServiceLink/` 🟡 CAUGHT UP
+
+> This file is named `Backend/ROADMAP.md` but now tracks the whole product. Promoting it to a repo-root `ROADMAP.md` is still worth doing; left in place for now so existing links don't break.
+
+**The app exists and is not scaffolding.** Angular 21, Tailwind 4, vitest — login, dashboard, ticket list/detail, ticket form, people admin, sidebar, auth/role guards, a JWT interceptor, and services for tickets/comments/users/attachments. It was written against the *pre-Phase-1* API and drifted badly; `FRONTEND-RESYNC-PLAN.md` (repo root) is the full inventory and is now closed through step 5.
+
+**Resync — ✅ done** (PRs #8, #9, #14). Identity moved into the JWT, the six-state lifecycle, the `PagedModel` `$.page` shape, and the `PUT`-vs-`PATCH` verbs are all correct. Contract specs now assert HTTP method, URL, and body key, because that is the drift the type system cannot catch.
+
+**UI for every Phase 2 capability — ✅ done** (PR #14). Status transitions, the Envers audit trail, attachments, internal comments, unassign, role management, and paginated/filterable search all have surfaces. Before this, several had no client at all.
+
+**Design system — ✅ done** (PR #14). One rule governs colour: **chroma is reserved for urgency** — the only saturated values map 1:1 onto `TicketPriority`, and ticket *status* is encoded in luminance alone, so "how bad" and "how far along" stay independently readable. The signature element is a **lifecycle rail** that draws `TicketStatus.canTransitionTo` as a four-station main line with `ON_HOLD` as a siding and `REOPENED` as a return path; it *is* the status control, so the UI cannot compose an illegal transition. Rationale lives in the header comment of `src/styles.css`.
+
+**Local loop:** `cd Frontend/ServiceLink && npm install && npm start`. **No Docker needed** — that requirement is backend-Testcontainers only. `node_modules` is not committed and starts empty.
+
+### Open
+
+- ⬅️ **End-to-end verification has never been run.** `npm run build` is clean and 40 specs pass across 13 files, but nobody has driven a ticket through the state machine in a browser with the API up. This is *Verification §3* of the resync plan and is the outstanding gate.
+- ⬜ **No UI yet:** bulk status/assign, comment search, password change/forgot/reset, suspend/ban, user registration. Each is additive; the contract is correct now.
+- ⬜ **Two backend DTO gaps now have concrete consumers.** `TicketResponseDto` returns `assignedTo`/`requester` as bare UUIDs, so list views can only resolve names for ADMINs (who may call the admin-only `GET /api/users`); AGENTs and USERs see "Assigned"/"Unassigned". `UserResponseDto` does not project `role` at all — it lives on `Credentials` — so the people page shows a person's role as "not shown" until an admin sets one. Both are small additions worth making together.
+- ⬜ **Expose allowed transitions from the backend** (on `TicketResponseDto`, or `GET /api/tickets/{id}/transitions`). The client mirrors `canTransitionTo` in `ALLOWED_TRANSITIONS`, which is exactly the duplication the resync existed to remove. A spec pins the mirror against the Java table, so drift fails a test rather than silently dropping a move — but the duplication remains.
+- ⬜ **`@OrderBy("createdAt ASC")` on `Ticket.comments`.** `ticket-detail` now reads the sorted comment endpoint so that view is safe, but the embedded list is still unordered for every other consumer.
+
+---
+
 ## Phase 3 — Collaboration, notifications & SLAs (later)
 
 Features that improve responsiveness and team coordination once the core is solid.
@@ -86,6 +110,8 @@ Email and/or in-app notifications on assignment, status change, and new comments
 
 **SLA tracking & due dates.**
 Add SLA targets per priority and a `dueDate`, then flag overdue tickets. Resolution time is computable from existing timestamps but is never derived.
+
+*Now has a waiting consumer.* The frontend deliberately shows **dwell** — time since `updatedAt`, labelled "quiet for" — and never a deadline, because inventing a countdown against a field that does not exist would present fiction as measurement. The dashboard already sorts open work longest-quiet-first, so the moment a real `dueDate` and per-priority target land, that surface can become a genuine breach view. **This is the prerequisite; the UI must not synthesise one.**
 
 **Watchers / CC and @mentions.**
 Let people beyond the requester and assignee follow a ticket and be notified. Builds on the notifications work.
@@ -132,12 +158,15 @@ Stand up automated build/test/deploy and make the app deployable outside localho
 
 ## Suggested sequencing summary
 
-| Phase | Theme | Why now |
-|-------|-------|---------|
-| 1 | Foundations & security | Fixes trust/integrity gaps; unblocks later phases |
-| 2 | Core ticketing | Makes the product genuinely usable |
-| 3 | Collaboration, notifications, SLAs | Improves responsiveness once core is solid |
-| 4 | Insight & platform maturity | Reporting and operational hardening for scale |
+| Phase | Theme | Status |
+|-------|-------|--------|
+| 1 | Foundations & security | ✅ Complete |
+| 2 | Core ticketing | ✅ Complete |
+| Frontend | Resync + UI for Phase 1–2 | 🟡 Caught up; end-to-end verification outstanding |
+| 3 | Collaboration, notifications, SLAs | ⬜ Next |
+| 4 | Insight & platform maturity | ⬜ Later |
+
+**Next up:** Phase 3. Notifications are the biggest remaining experience gap, and SLA/due-dates now have a frontend waiting on them.
 
 ---
 
