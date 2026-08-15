@@ -1,0 +1,62 @@
+:host {
+  display: block;
+  flex: none;
+}
+
+.nav-rail {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 14rem;
+  background: var(--color-ink-900);
+  border-right: 1px solid var(--color-ink-700);
+}
+
+.wordmark {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 1.375rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--color-ink-000);
+  line-height: 1;
+}
+
+.nav-link {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0.5rem 0.5rem;
+  font-family: var(--font-display);
+  font-size: 0.875rem;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  color: var(--color-ink-300);
+  transition: color 120ms ease;
+}
+
+.nav-link:hover {
+  color: var(--color-ink-000);
+}
+
+/* The active mark is a lit tick in the margin, not a filled pill — the rail
+   reads as a row of indicator lamps down the side of the panel. */
+.nav-tick {
+  width: 2px;
+  height: 0.875rem;
+  flex: none;
+  background: var(--color-ink-700);
+  transition: background-color 120ms ease;
+}
+
+.nav-link:hover .nav-tick {
+  background: var(--color-ink-400);
+}
+
+.nav-link.is-active {
+  color: var(--color-ink-000);
+}
+
+.nav-link.is-active .nav-tick {
+  background: var(--color-ink-000);
+}

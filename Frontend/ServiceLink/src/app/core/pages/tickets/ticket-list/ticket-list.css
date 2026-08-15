@@ -1,0 +1,9 @@
+/* Unassigned is the actionable state in this column, so it is marked rather
+   than left blank — a dashed rule reads as "slot empty" on an instrument. */
+.unowned {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--color-ink-400);
+  border-bottom: 1px dashed var(--color-ink-600);
+  padding-bottom: 1px;
+}

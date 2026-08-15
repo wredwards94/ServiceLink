@@ -1,0 +1,91 @@
+<div class="p-6 lg:p-8 max-w-6xl">
+  <header class="pb-6">
+    <h1 class="page-title">People</h1>
+    <p class="eyebrow mt-1">Who works the queue, and what they are carrying</p>
+  </header>
+
+  @if (isLoading) {
+    <p class="readout text-ink-400 py-12">Loading people…</p>
+  }
+
+  @if (loadError) {
+    <div class="panel p-6">
+      <p class="text-sm text-sev-critical">{{ loadError }}</p>
+      <button type="button" class="btn btn-ghost mt-4" (click)="load()">Try again</button>
+    </div>
+  }
+
+  @if (!isLoading && !loadError) {
+    @if (actionError) {
+      <p class="error-note mb-4" role="alert">{{ actionError }}</p>
+    }
+
+    <section class="panel">
+      <div class="overflow-x-auto">
+        <table class="w-full">
+          <thead>
+            <tr class="border-b border-ink-700">
+              <th scope="col" class="th">Person</th>
+              <th scope="col" class="th th-num">Open</th>
+              <th scope="col" class="th th-num">Assigned</th>
+              <th scope="col" class="th th-num">Filed</th>
+              <th scope="col" class="th">Role</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of rows; track row.userId) {
+              <tr class="border-b border-ink-700 last:border-0">
+                <td class="td">
+                  <p class="text-ink-100">
+                    {{ row.name }}
+                    @if (row.isSelf) {
+                      <span class="callsign ml-1.5">you</span>
+                    }
+                  </p>
+                  <p class="callsign mt-0.5">{{ row.email }}</p>
+                </td>
+                <td class="td td-num readout">{{ row.openAssigned }}</td>
+                <td class="td td-num readout">{{ row.totalAssigned }}</td>
+                <td class="td td-num readout">{{ row.requested }}</td>
+                <td class="td">
+                  <label class="sr-only" [attr.for]="'role-' + row.userId">
+                    Role for {{ row.name }}
+                  </label>
+                  <select
+                    [id]="'role-' + row.userId"
+                    class="well w-auto"
+                    [disabled]="savingUserId === row.userId"
+                    [ngModel]="row.role"
+                    (ngModelChange)="changeRole(row, $event)">
+                    @if (!row.role) {
+                      <option [ngValue]="null">Not shown</option>
+                    }
+                    @for (role of roles; track role) {
+                      <option [ngValue]="role">{{ role }}</option>
+                    }
+                  </select>
+                </td>
+              </tr>
+            }
+
+            @if (rows.length === 0) {
+              <tr>
+                <td class="td text-center py-10" colspan="5">
+                  <p class="eyebrow">No people yet</p>
+                  <p class="text-sm text-ink-300 mt-2">
+                    Accounts appear here once someone registers.
+                  </p>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <p class="callsign mt-4 max-w-2xl leading-relaxed">
+      A person's current role is not part of the users response yet, so it reads as
+      "not shown" until you set one. Changing it takes effect immediately.
+    </p>
+  }
+</div>

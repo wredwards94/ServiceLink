@@ -1,0 +1,264 @@
+/* ==========================================================================
+   Lifecycle rail
+   --------------------------------------------------------------------------
+   Geometry note: every track is a 4-column grid on the same `1fr` tracks, so
+   a station's centre is always at the centre of its column. Connectors are
+   drawn as insets against those columns (left:-50% → right:50% spans exactly
+   one column centre to the next), and the two off-main tracks position their
+   risers at 1/6, 1/2 and 5/6 of a 3-column span — the centres of columns 2, 3
+   and 4. Nothing here depends on a measured pixel offset.
+   ========================================================================== */
+
+:host {
+  display: block;
+}
+
+/* Rows size to their content rather than to fixed heights — the siding row
+   carries a label plus a node plus its riser, and pinning it to a guessed
+   pixel height clips whichever of those grows. The return row is the one
+   exception: its station is positioned absolutely and so contributes no
+   height, which is what the min-height covers. */
+.rail {
+  display: grid;
+  grid-template-rows: auto auto auto;
+  min-width: 26rem;
+  padding: 0.25rem 0;
+}
+
+.rail-track {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  position: relative;
+}
+
+.rail-slot {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+}
+
+/* --- Stations ------------------------------------------------------------ */
+
+.station {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4375rem;
+  background: none;
+  border: 0;
+  padding: 0;
+  position: relative;
+  z-index: 1;
+}
+
+button.station {
+  cursor: pointer;
+}
+
+button.station:disabled {
+  cursor: wait;
+}
+
+.station-node {
+  width: 9px;
+  height: 9px;
+  flex: none;
+  border: 1px solid var(--color-ink-700);
+  background: transparent;
+  transition:
+    background-color 140ms ease,
+    border-color 140ms ease;
+}
+
+.station-label {
+  font-family: var(--font-display);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--color-ink-700);
+  transition: color 140ms ease;
+}
+
+/* Spent — the ticket came through here. */
+.is-spent .station-node {
+  background: var(--color-ink-600);
+  border-color: var(--color-ink-600);
+}
+.is-spent .station-label {
+  color: var(--color-ink-400);
+}
+
+/* Live — where the ticket is now. The brightest thing on the rail. */
+.is-live .station-node {
+  background: var(--color-ink-000);
+  border-color: var(--color-ink-000);
+  animation: station-pulse 2.4s ease-out infinite;
+}
+.is-live .station-label {
+  color: var(--color-ink-000);
+}
+
+/* Open — a legal move from here. Outlined, never filled: it has not happened. */
+.is-open .station-node {
+  border-color: var(--color-ink-300);
+  background: transparent;
+}
+.is-open .station-label {
+  color: var(--color-ink-300);
+}
+
+button.station.is-open:hover:not(:disabled) .station-node {
+  border-color: var(--color-ink-000);
+  background: color-mix(in srgb, var(--color-ink-000) 25%, transparent);
+}
+button.station.is-open:hover:not(:disabled) .station-label {
+  color: var(--color-ink-000);
+}
+
+.station-node.is-pending {
+  background: var(--color-ink-300);
+  border-color: var(--color-ink-300);
+  animation: station-pulse 900ms ease-out infinite;
+}
+
+/* Inert — unreachable from here. Present, because the machine still has it. */
+.is-inert .station-node {
+  border-color: var(--color-ink-700);
+}
+
+/* --- Main line connectors ------------------------------------------------ */
+
+.rail-main .rail-slot.has-connector::before {
+  content: '';
+  position: absolute;
+  top: 4px;
+  left: -50%;
+  right: 50%;
+  margin: 0 1.25rem;
+  height: 1px;
+  background: var(--color-ink-700);
+}
+
+.rail-main .rail-slot.connector-live::before {
+  background: var(--color-ink-600);
+}
+
+/* --- Siding: ON_HOLD, hanging above IN_PROGRESS -------------------------- */
+
+.rail-siding .rail-slot {
+  align-items: flex-end;
+  padding-bottom: 0.75rem;
+}
+
+.rail-siding .station {
+  flex-direction: column-reverse; /* label above, node below, meeting the riser */
+}
+
+.rail-siding .rail-slot::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  width: 1px;
+  height: 0.75rem;
+  background: var(--color-ink-700);
+}
+
+/* --- Return: REOPENED, gathering RESOLVED and CLOSED back to IN_PROGRESS -- */
+
+.rail-return {
+  min-height: 2.75rem;
+}
+
+.rail-return .rail-slot {
+  align-items: flex-start;
+  padding-top: 1.125rem;
+  justify-content: flex-start;
+}
+
+/* The horizontal run, from column 2's centre (1/6) to column 4's centre (5/6). */
+.rail-return .rail-slot::before {
+  content: '';
+  position: absolute;
+  top: 1.125rem;
+  left: 16.6667%;
+  right: 16.6667%;
+  height: 1px;
+  background: var(--color-ink-700);
+}
+
+/* Risers up to IN_PROGRESS (1/6), RESOLVED (1/2) and CLOSED (5/6). */
+.rail-return .rail-slot::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 16.6667%;
+  right: 16.6667%;
+  height: 1.125rem;
+  border-left: 1px solid var(--color-ink-700);
+  border-right: 1px solid var(--color-ink-700);
+  background:
+    linear-gradient(var(--color-ink-700), var(--color-ink-700)) 50% 0 / 1px 100% no-repeat;
+}
+
+/* Sit on the run at its left end — the point where work rejoins the line.
+   Absolute against the slot so the node lands exactly on column 2's centre
+   (1/6 of the span) and is centred vertically on the run itself. */
+.rail-return .station {
+  position: absolute;
+  top: 1.125rem;
+  left: 16.6667%;
+  transform: translate(-4.5px, -50%);
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.rail-return .station-node {
+  background: var(--color-ink-900);
+}
+
+.rail-return .station-label {
+  background: var(--color-ink-900);
+  padding-right: 0.375rem;
+}
+
+/* --- Compact: four pips for a table row ---------------------------------- */
+
+.pips {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.pip {
+  width: 6px;
+  height: 6px;
+  border: 1px solid var(--color-ink-700);
+}
+
+.pip.is-spent {
+  background: var(--color-ink-600);
+  border-color: var(--color-ink-600);
+}
+
+.pip.is-live {
+  background: var(--color-ink-000);
+  border-color: var(--color-ink-000);
+}
+
+.pip.is-open,
+.pip.is-inert {
+  background: transparent;
+}
+
+.pip-flag {
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
+  letter-spacing: 0.04em;
+  color: var(--color-ink-400);
+  margin-left: 0.25rem;
+}
