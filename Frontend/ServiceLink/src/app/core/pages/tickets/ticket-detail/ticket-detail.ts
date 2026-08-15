@@ -2,7 +2,7 @@ import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { TicketService } from '../../../services/ticket.service';
 import { UserService } from '../../../services/user.service';
-import { TicketResponse } from '../../../../models/ticket.model';
+import { ALLOWED_TRANSITIONS, Status, TicketResponse } from '../../../../models/ticket.model';
 import { Profile, UserResponse } from '../../../../models/user.model';
 import { NgClass } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -36,6 +36,10 @@ export class TicketDetail implements OnInit {
   newComment: string = '';
   isSubmitting: boolean = false;
   isStaff: boolean = false;
+  availableTransitions: Status[] = [];
+  selectedStatus: Status | '' = '';
+  statusError: string | null = null;
+  isChangingStatus: boolean = false;
 
   ngOnInit(): void {
     this.isStaff = this.authService.isStaff();
@@ -45,10 +49,15 @@ export class TicketDetail implements OnInit {
     }
   }
 
+  private applyTicket(ticket: TicketResponse): void {
+    this.ticket = ticket;
+    this.availableTransitions = ALLOWED_TRANSITIONS[ticket.status] ?? [];
+  }
+
   loadTicket(id: number): void {
     this.ticketService.getTicketById(id).subscribe({
       next: (ticket) => {
-        this.ticket = ticket;
+        this.applyTicket(ticket);
         this.userService.getUserById(ticket.requester).subscribe({
           next: (requester) => {
             this.requester = requester;
@@ -115,5 +124,31 @@ export class TicketDetail implements OnInit {
 
   goBack(): void {
     this.router.navigate(['/dashboard']);
+  }
+
+  changeStatus(target: Status): void {
+    if (!this.ticket || !target || this.isChangingStatus) return;
+
+    this.isChangingStatus = true;
+    this.statusError = null;
+
+    this.ticketService.updateTicketStatus(this.ticket.id, target).subscribe({
+      next: (updated) => {
+        this.applyTicket({
+          ...updated,
+          comments: updated.comments ?? this.ticket?.comments ?? [],
+        });
+        this.selectedStatus = '';
+        this.isChangingStatus = false;
+        this.cdr.detectChanges();
+      },
+      error: (err) => {
+        console.error('Failed to update status', err);
+        this.statusError = err.error?.message ?? 'Failed to update status';
+        this.selectedStatus = '';
+        this.isChangingStatus = false;
+        this.cdr.detectChanges();
+      },
+    });
   }
 }
