@@ -49,6 +49,10 @@ public class SecurityConfig {
                         // USERs may PUT (edit) — the service enforces author + edit-window; DELETE stays staff-only
                         .requestMatchers(HttpMethod.PUT, "/api/comments/**").hasAnyRole("ADMIN", "AGENT", "USER")
                         .requestMatchers("/api/comments/**").hasAnyRole("ADMIN", "AGENT")
+                        // attachments — the service enforces ticket ownership and the internal-comment rule
+                        .requestMatchers(HttpMethod.GET, "/api/attachments/**").hasAnyRole("ADMIN", "AGENT", "USER")
+                        .requestMatchers(HttpMethod.POST, "/api/attachments/**").hasAnyRole("ADMIN", "AGENT", "USER")
+                        .requestMatchers("/api/attachments/**").hasAnyRole("ADMIN", "AGENT")
                         // users
                         .requestMatchers(HttpMethod.GET, "/api/users").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/api/users/**").hasRole("ADMIN")
