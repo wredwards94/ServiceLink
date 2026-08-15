@@ -1,0 +1,137 @@
+/* --- Tabs -----------------------------------------------------------------
+   Channel selectors: the live one is marked by a lit rule along its bottom
+   edge, the same lamp language the nav rail uses. */
+
+.tabs {
+  display: flex;
+  border-bottom: 1px solid var(--color-ink-700);
+}
+
+.tab {
+  font-family: var(--font-display);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-ink-400);
+  padding: 0.75rem 1.25rem;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  cursor: pointer;
+  transition:
+    color 120ms ease,
+    border-color 120ms ease;
+}
+
+.tab:hover {
+  color: var(--color-ink-100);
+}
+
+.tab.is-on {
+  color: var(--color-ink-000);
+  border-bottom-color: var(--color-ink-000);
+}
+
+/* --- Comments -------------------------------------------------------------- */
+
+.comment {
+  padding: 1rem 0;
+  border-bottom: 1px solid var(--color-ink-700);
+}
+
+.comment:first-of-type {
+  padding-top: 0;
+}
+
+.comment:last-of-type {
+  border-bottom: 0;
+}
+
+/* An internal note is marked structurally, not with colour — colour would
+   claim it is urgent, and it is merely private. */
+.comment.is-internal {
+  border-left: 2px solid var(--color-ink-600);
+  padding-left: 0.875rem;
+  margin-left: -0.875rem;
+  background: linear-gradient(to right, var(--color-ink-850), transparent 40%);
+}
+
+.check {
+  appearance: none;
+  width: 0.875rem;
+  height: 0.875rem;
+  border: 1px solid var(--color-ink-600);
+  background: var(--color-ink-800);
+  flex: none;
+  cursor: pointer;
+}
+
+.check:checked {
+  background: var(--color-ink-000);
+  border-color: var(--color-ink-000);
+}
+
+.over {
+  color: var(--color-sev-critical);
+}
+
+/* --- Audit trail ------------------------------------------------------------
+   Revisions are numbered because Envers numbers them — the marker is the real
+   revision id, not decorative sequencing. */
+
+.trail {
+  display: flex;
+  flex-direction: column;
+}
+
+.trail-item {
+  display: flex;
+  gap: 1rem;
+  padding: 0.625rem 0;
+  border-bottom: 1px solid var(--color-ink-700);
+}
+
+.trail-item:last-child {
+  border-bottom: 0;
+}
+
+.trail-rev {
+  color: var(--color-ink-400);
+  flex: none;
+  width: 3rem;
+  padding-top: 1px;
+}
+
+.trail-from {
+  color: var(--color-ink-400);
+  text-decoration: line-through;
+  text-decoration-color: var(--color-ink-600);
+  margin-left: 0.375rem;
+}
+
+/* --- Files ----------------------------------------------------------------- */
+
+.file-well {
+  padding: 0.4375rem 0.75rem;
+  font-size: 0.8125rem;
+  color: var(--color-ink-300);
+}
+
+.file-well::file-selector-button {
+  font-family: var(--font-display);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  background: transparent;
+  color: var(--color-ink-300);
+  border: 1px solid var(--color-ink-600);
+  padding: 0.25rem 0.75rem;
+  margin-right: 0.75rem;
+  cursor: pointer;
+}
+
+.file-well::file-selector-button:hover {
+  color: var(--color-ink-000);
+  border-color: var(--color-ink-400);
+}

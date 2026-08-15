@@ -1,44 +1,69 @@
-<!--
-  This example requires updating your template:
-
-  ```
-  <html class="h-full bg-gray-900">
-  <body class="h-full">
-  ```
--->
-<div class="flex min-h-full flex-col justify-center px-6 py-12 lg:px-8">
-  <div class="sm:mx-auto sm:w-full sm:max-w-sm">
-    <img src="https://tailwindcss.com/plus-assets/img/logos/mark.svg?color=indigo&shade=500"
-         alt="ServiceLink" class="mx-auto h-10 w-auto" />
-    <h2 class="mt-10 text-center text-2xl/9 font-bold tracking-tight text-white">Sign in to your account</h2>
-  </div>
-
-  <div class="mt-10 sm:mx-auto sm:w-full sm:max-w-sm">
-    <form action="#" (ngSubmit)="onSubmit()" class="space-y-6">
+<div class="graticule min-h-screen flex items-center justify-center p-6">
+  <div class="w-full max-w-4xl grid lg:grid-cols-[1.3fr_1fr] border border-ink-700">
+    <!-- Thesis: the machine you are signing in to operate. Six states, and only
+         certain moves between them — that constraint is the whole product. -->
+    <section class="panel border-0 lg:border-r border-ink-700 p-8 lg:p-10 hidden lg:flex flex-col justify-between">
       <div>
-        <label for="username" class="block text-sm/6 font-medium text-gray-100">Username</label>
-        <div class="mt-2">
-          <input id="username" type="text" name="username" [(ngModel)]="credentials.username"
-                 class="block w-full rounded-md bg-white/5 px-3 py-1.5 text-base text-white outline-1 -outline-offset-1 outline-white/10 placeholder:text-gray-500 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-500 sm:text-sm/6" />
-        </div>
+        <span class="wordmark">ServiceLink</span>
+        <p class="eyebrow mt-1">IT service desk</p>
       </div>
 
-      <div>
-        <div class="flex items-center justify-between">
-          <label for="password" class="block text-sm/6 font-medium text-gray-100">Password</label>
-          <div class="text-sm">
-            <a href="#" class="font-semibold text-indigo-400 hover:text-indigo-300">Forgot password?</a>
-          </div>
-        </div>
-        <div class="mt-2">
-          <input id="password" type="password" name="password" [(ngModel)]="credentials.password"
-                 (click)="onSubmit()" class="block w-full rounded-md bg-white/5 px-3 py-1.5 text-base text-white outline-1 -outline-offset-1 outline-white/10 placeholder:text-gray-500 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-500 sm:text-sm/6" />
-        </div>
+      <div class="my-10 overflow-x-auto">
+        <app-lifecycle-rail [status]="sampleStatus" />
       </div>
 
-      <div>
-        <button type="submit" class="flex w-full justify-center rounded-md bg-indigo-500 px-3 py-1.5 text-sm/6 font-semibold text-white hover:bg-indigo-400 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500">Sign in</button>
+      <p class="text-sm text-ink-300 leading-relaxed max-w-xs">
+        Every ticket moves through six states, and only certain moves are legal from
+        each one. The rail above is that machine.
+      </p>
+    </section>
+
+    <!-- Sign-in -->
+    <section class="panel border-0 p-8 lg:p-10 flex flex-col justify-center">
+      <div class="lg:hidden mb-8">
+        <span class="wordmark">ServiceLink</span>
+        <p class="eyebrow mt-1">IT service desk</p>
       </div>
-    </form>
+
+      <h1 class="eyebrow">Sign in</h1>
+
+      <form (ngSubmit)="onSubmit()" class="mt-5 space-y-4">
+        <div>
+          <label for="username" class="block text-sm text-ink-300 mb-1.5">Username</label>
+          <input
+            id="username"
+            name="username"
+            type="text"
+            autocomplete="username"
+            [(ngModel)]="credentials.username"
+            class="well"
+            [attr.aria-invalid]="error ? 'true' : null" />
+        </div>
+
+        <div>
+          <label for="password" class="block text-sm text-ink-300 mb-1.5">Password</label>
+          <input
+            id="password"
+            name="password"
+            type="password"
+            autocomplete="current-password"
+            [(ngModel)]="credentials.password"
+            class="well"
+            [attr.aria-invalid]="error ? 'true' : null" />
+        </div>
+
+        @if (error) {
+          <p class="error-note" role="alert">{{ error }}</p>
+        }
+
+        <button type="submit" class="btn btn-primary w-full" [disabled]="isSubmitting">
+          {{ isSubmitting ? 'Signing in…' : 'Sign in' }}
+        </button>
+      </form>
+
+      <p class="callsign mt-6">
+        Lost your password? Ask an administrator to reset it.
+      </p>
+    </section>
   </div>
 </div>

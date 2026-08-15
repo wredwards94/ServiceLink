@@ -1,120 +1,337 @@
-<div class="min-h-screen bg-gray-900 text-white">
+<div class="p-6 lg:p-8 max-w-5xl">
+  @if (isLoading) {
+    <p class="readout text-ink-400 py-12">Loading ticket…</p>
+  }
 
-  <div class="p-6 max-w-4xl mx-auto">
+  @if (notFound) {
+    <div class="panel p-10 text-center">
+      <p class="eyebrow">Ticket not found</p>
+      <p class="text-sm text-ink-300 mt-3">
+        It may have been deleted, or you may not have access to it.
+      </p>
+      <button type="button" class="btn btn-ghost mt-6" (click)="goBack()">Back to tickets</button>
+    </div>
+  }
 
-    @if (isLoading) {
-      <div class="text-center text-gray-400 py-8">Loading...</div>
+  @if (!isLoading && ticket) {
+    <a routerLink="/tickets" class="callsign hover:text-ink-000">← All tickets</a>
+
+    <!-- Header -->
+    <header class="mt-4 flex flex-wrap items-start justify-between gap-4">
+      <div class="min-w-0">
+        <p class="callsign">SL-{{ ticket.id }} · {{ ticket.category }}</p>
+        <h1 class="page-title mt-1">{{ ticket.title }}</h1>
+      </div>
+      <div class="flex items-center gap-2 flex-none">
+        <span [class]="statusClass">{{ statusText }}</span>
+        <span [class]="priorityClass">{{ priorityText }}</span>
+      </div>
+    </header>
+
+    <!-- Signature: the state machine, and the only way to move the ticket. -->
+    <section class="panel mt-6">
+      <div class="flex items-baseline justify-between px-5 pt-4">
+        <h2 class="eyebrow">Lifecycle</h2>
+        @if (isStaff && availableTransitions.length > 0) {
+          <p class="callsign">Choose a lit station to move it</p>
+        } @else if (isStaff) {
+          <p class="callsign">No moves available from here</p>
+        }
+      </div>
+
+      <div class="graticule px-5 pb-5 pt-2 overflow-x-auto">
+        <app-lifecycle-rail
+          [status]="ticket.status"
+          [interactive]="isStaff"
+          [pending]="pendingStatus"
+          (move)="changeStatus($event)" />
+      </div>
+
+      @if (statusError) {
+        <p class="error-note mx-5 mb-5" role="alert">{{ statusError }}</p>
+      }
+    </section>
+
+    <!-- Meta -->
+    <section class="grid sm:grid-cols-2 lg:grid-cols-4 gap-px bg-ink-700 border border-ink-700 mt-6">
+      <div class="bg-ink-900 p-4">
+        <p class="eyebrow">Requester</p>
+        <p class="text-sm text-ink-100 mt-1.5">{{ requesterName ?? '—' }}</p>
+      </div>
+
+      <div class="bg-ink-900 p-4">
+        <p class="eyebrow">Owner</p>
+        <p class="text-sm mt-1.5" [class.text-ink-100]="assigneeName" [class.text-ink-400]="!assigneeName">
+          {{ assigneeName ?? 'Unassigned' }}
+        </p>
+      </div>
+
+      <div class="bg-ink-900 p-4">
+        <p class="eyebrow">Opened</p>
+        <p class="readout text-ink-100 mt-1.5">{{ openedAt }}</p>
+      </div>
+
+      <div class="bg-ink-900 p-4">
+        <p class="eyebrow">Quiet for</p>
+        <p class="readout text-ink-100 mt-1.5">{{ dwell }}</p>
+      </div>
+    </section>
+
+    <!-- Assignment: staff only. PATCH/PUT on /api/tickets is ADMIN/AGENT. -->
+    @if (isStaff) {
+      <section class="panel mt-6 p-5">
+        <h2 class="eyebrow">Assignment</h2>
+
+        <div class="flex flex-wrap items-end gap-3 mt-3">
+          <button
+            type="button"
+            class="btn btn-ghost"
+            [disabled]="isAssigning || ticket.assignedTo === currentUserId"
+            (click)="assignToMe()">
+            {{ ticket.assignedTo === currentUserId ? 'Assigned to you' : 'Assign to me' }}
+          </button>
+
+          @if (ticket.assignedTo) {
+            <button type="button" class="btn btn-ghost" [disabled]="isAssigning" (click)="unassign()">
+              Unassign
+            </button>
+          }
+
+          @if (isAdmin && assignableUsers.length > 0) {
+            <div class="flex items-end gap-2">
+              <div>
+                <label for="assignee" class="block text-sm text-ink-300 mb-1.5">
+                  Assign to someone else
+                </label>
+                <select id="assignee" class="well" [(ngModel)]="selectedAssignee">
+                  <option value="">Choose a person</option>
+                  @for (user of assignableUsers; track user.userId) {
+                    <option [value]="user.userId">{{ user.name }}</option>
+                  }
+                </select>
+              </div>
+              <button
+                type="button"
+                class="btn btn-ghost"
+                [disabled]="!selectedAssignee || isAssigning"
+                (click)="assignToSelected()">
+                Assign
+              </button>
+            </div>
+          }
+        </div>
+
+        @if (assignError) {
+          <p class="error-note mt-3" role="alert">{{ assignError }}</p>
+        }
+      </section>
     }
 
-    @if (!isLoading && ticket) {
-      <!-- Header -->
-      <div class="bg-gray-800 rounded-lg p-6 mb-6">
-        <div class="flex justify-between items-start">
-          <div>
-            <h2 class="text-2xl font-bold text-white">{{ ticket.title }}</h2>
-            <p class="text-gray-400 mt-1">{{ ticket.category }}</p>
-          </div>
-          <div class="flex gap-2">
-            <span [ngClass]="{
-              'text-blue-400 bg-blue-400/10': ticket.status === 'NEW',
-              'text-yellow-400 bg-yellow-400/10': ticket.status === 'IN_PROGRESS',
-              'text-green-400 bg-green-400/10': ticket.status === 'CLOSED'
-            }" class="inline px-3 py-1 text-sm font-normal rounded-full">
-              {{ ticket.status }}
-            </span>
-            <span [ngClass]="{
-              'text-gray-400 bg-gray-400/10': ticket.priority === 'LOW',
-              'text-blue-400 bg-blue-400/10': ticket.priority === 'MEDIUM',
-              'text-orange-400 bg-orange-400/10': ticket.priority === 'HIGH',
-              'text-red-400 bg-red-400/10': ticket.priority === 'CRITICAL'
-            }" class="inline px-3 py-1 text-sm font-normal rounded-full">
-              {{ ticket.priority }}
-            </span>
-          </div>
-        </div>
+    <!-- Description -->
+    <section class="panel mt-6 p-5">
+      <h2 class="eyebrow">Description</h2>
+      <p class="text-sm text-ink-100 leading-relaxed mt-2.5 whitespace-pre-line">
+        {{ ticket.description }}
+      </p>
+    </section>
 
-        <p class="mt-4 text-gray-300">{{ ticket.description }}</p>
+    <!-- Activity / History / Files -->
+    <section class="panel mt-6">
+      <div class="tabs" role="tablist" aria-label="Ticket detail">
+        <button
+          type="button"
+          role="tab"
+          class="tab"
+          [class.is-on]="panel === 'activity'"
+          [attr.aria-selected]="panel === 'activity'"
+          (click)="showPanel('activity')">
+          Activity
+        </button>
+        <button
+          type="button"
+          role="tab"
+          class="tab"
+          [class.is-on]="panel === 'history'"
+          [attr.aria-selected]="panel === 'history'"
+          (click)="showPanel('history')">
+          Audit trail
+        </button>
+        <button
+          type="button"
+          role="tab"
+          class="tab"
+          [class.is-on]="panel === 'files'"
+          [attr.aria-selected]="panel === 'files'"
+          (click)="showPanel('files')">
+          Files
+        </button>
+      </div>
 
-        <!-- Ticket Meta -->
-        <div class="grid grid-cols-2 gap-4 mt-6">
-          <div>
-            <p class="text-gray-400 text-sm">Requester</p>
-            <p class="text-white mt-1">{{ requesterProfile?.firstName }} {{ requesterProfile?.lastName }}</p>
-          </div>
-          <div>
-            <p class="text-gray-400 text-sm">Assigned To</p>
-            <p class="text-white mt-1">{{ assignedToProfile ? `${assignedToProfile.firstName} ${assignedToProfile.lastName}` : 'Unassigned' }}</p>
-          </div>
-          <div>
-            <p class="text-gray-400 text-sm">Created</p>
-            <p class="text-white mt-1">{{ ticket.createdAt }}</p>
-          </div>
-          <div>
-            <p class="text-gray-400 text-sm">Last Updated</p>
-            <p class="text-white mt-1">{{ ticket.updatedAt }}</p>
-          </div>
-        </div>
-        @if (isStaff && availableTransitions.length > 0) {
-          <div class="mt-6 pt-4 border-t border-gray-700">
-            <label class="text-gray-400 text-sm">Change status</label>
-            <select
-              [(ngModel)]="selectedStatus"
-              (ngModelChange)="changeStatus($event)"
-              [disabled]="isChangingStatus"
-              class="ml-2 bg-gray-900 text-white text-sm rounded-md px-3 py-1 border border-gray-700">
-              <option value="" disabled>Select...</option>
-              @for (s of availableTransitions; track s) {
-                <option [value]="s">{{ s }}</option>
+      <!-- Activity ------------------------------------------------------- -->
+      @if (panel === 'activity') {
+        <div class="p-5">
+          @if (comments.length === 0 && !commentsLoading) {
+            <p class="text-sm text-ink-300">
+              No comments yet. Say what you have found, or what you need from the requester.
+            </p>
+          }
+
+          @for (comment of comments; track comment.id) {
+            <article class="comment" [class.is-internal]="comment.internal">
+              <div class="flex items-baseline justify-between gap-3">
+                <p class="text-sm font-medium text-ink-000">{{ comment.authorName }}</p>
+                <p class="callsign flex-none">{{ formatStamp(comment.createdAt) }}</p>
+              </div>
+              @if (comment.internal) {
+                <p class="eyebrow mt-1">Internal — not shown to the requester</p>
               }
-            </select>
-            @if (statusError) {
-              <p class="text-red-400 text-sm mt-2">{{ statusError }}</p>
+              <p class="text-sm text-ink-100 leading-relaxed mt-2 whitespace-pre-line">
+                {{ comment.content }}
+              </p>
+            </article>
+          }
+
+          @if (hasMoreComments) {
+            <button
+              type="button"
+              class="btn btn-ghost mt-4"
+              [disabled]="commentsLoading"
+              (click)="loadMoreComments()">
+              {{ commentsLoading ? 'Loading…' : 'Load older comments' }}
+            </button>
+          }
+
+          <!-- Composer -->
+          <div class="mt-6 pt-5 border-t border-ink-700">
+            <label for="comment" class="eyebrow">Add a comment</label>
+            <textarea
+              id="comment"
+              rows="3"
+              class="well resize-none mt-2"
+              placeholder="What changed, or what you need next."
+              [maxlength]="commentMaxLength"
+              [(ngModel)]="newComment"></textarea>
+
+            <div class="flex flex-wrap items-center justify-between gap-3 mt-2">
+              <div class="flex items-center gap-4">
+                <p class="callsign" [class.over]="commentRemaining < 0">
+                  {{ commentRemaining }} left
+                </p>
+
+                @if (isStaff) {
+                  <label class="flex items-center gap-2 text-sm text-ink-300 cursor-pointer">
+                    <input type="checkbox" class="check" [(ngModel)]="newCommentInternal" />
+                    Internal note
+                  </label>
+                }
+              </div>
+
+              <button
+                type="button"
+                class="btn btn-primary"
+                [disabled]="!canPostComment"
+                (click)="addComment()">
+                {{ isPostingComment ? 'Posting…' : 'Post comment' }}
+              </button>
+            </div>
+
+            @if (commentError) {
+              <p class="error-note mt-3" role="alert">{{ commentError }}</p>
             }
           </div>
-        }
-      </div>
-
-      <!-- Comments -->
-      <div class="bg-gray-800 rounded-lg p-6">
-        <h3 class="text-lg font-semibold mb-4">Comments</h3>
-
-        @if (ticket.comments.length === 0) {
-          <p class="text-gray-400 text-sm">No comments yet.</p>
-        }
-
-        @for (comment of ticket.comments; track comment.id) {
-          <div class="border-b border-gray-700 py-4 last:border-0">
-            <div class="flex justify-between items-center mb-2">
-              <p class="text-sm font-medium text-indigo-400">{{ comment.authorName }}</p>
-              <p class="text-xs text-gray-400">{{ comment.createdAt }}</p>
-            </div>
-            <p class="text-gray-300 text-sm">{{ comment.content }}</p>
-          </div>
-        }
-      <!-- Add Comment Form -->
-      <div class="mt-6 pt-4">
-        <h4 class="text-sm font-medium text-gray-400 mb-2">Add Comment</h4>
-        <textarea
-          [(ngModel)]="newComment"
-          rows="3"
-          placeholder="Write a comment..."
-          class="w-full bg-gray-900 text-white text-sm rounded-lg px-4 py-2 outline-none border border-gray-700 focus:border-indigo-500 resize-none">
-    </textarea>
-        <div class="flex justify-end mt-2">
-          <button
-            (click)="addComment()"
-            [disabled]="isSubmitting || !newComment.trim()"
-            class="bg-indigo-500 hover:bg-indigo-400 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm px-4 py-2 rounded-md">
-            {{ isSubmitting ? 'Posting...' : 'Post Comment' }}
-          </button>
         </div>
-      </div>
-    </div>
-    }
+      }
 
-    @if (!isLoading && !ticket) {
-      <div class="text-center text-gray-400 py-8">Ticket not found.</div>
-    }
+      <!-- Audit trail ---------------------------------------------------- -->
+      @if (panel === 'history') {
+        <div class="p-5">
+          @if (historyLoading) {
+            <p class="readout text-ink-400">Loading audit trail…</p>
+          } @else if (historyError) {
+            <p class="text-sm text-sev-critical">{{ historyError }}</p>
+          } @else if (history.length === 0) {
+            <p class="text-sm text-ink-300">Nothing recorded yet.</p>
+          } @else {
+            <ol class="trail">
+              @for (entry of history; track entry.revision) {
+                <li class="trail-item">
+                  <span class="trail-rev readout">r{{ entry.revision }}</span>
+                  <div class="min-w-0">
+                    @if (entry.field) {
+                      <p class="text-sm text-ink-100">
+                        <span class="text-ink-300">{{ historyField(entry.field) }}</span>
+                        <span class="trail-from">{{ historyValue(entry.oldValue) }}</span>
+                        <span class="text-ink-600 mx-1.5">→</span>
+                        <span class="text-ink-000">{{ historyValue(entry.newValue) }}</span>
+                      </p>
+                    } @else {
+                      <p class="text-sm text-ink-100">{{ historyType(entry.type) }}</p>
+                    }
+                    <p class="callsign mt-0.5">
+                      {{ entry.actorName ?? 'system' }} · {{ formatStamp(entry.timestamp) }}
+                    </p>
+                  </div>
+                </li>
+              }
+            </ol>
+          }
+        </div>
+      }
 
-  </div>
+      <!-- Files ---------------------------------------------------------- -->
+      @if (panel === 'files') {
+        <div class="p-5">
+          @if (attachmentsLoading) {
+            <p class="readout text-ink-400">Loading files…</p>
+          } @else {
+            @if (attachments.length === 0) {
+              <p class="text-sm text-ink-300">
+                No files yet. Attach a log, a screenshot, or a config.
+              </p>
+            } @else {
+              <ul class="divide-y divide-ink-700 -mx-5">
+                @for (file of attachments; track file.id) {
+                  <li class="flex items-center justify-between gap-4 px-5 py-3">
+                    <div class="min-w-0">
+                      <p class="text-sm text-ink-100 truncate">{{ file.filename }}</p>
+                      <p class="callsign mt-0.5">
+                        {{ formatBytes(file.size) }} · {{ formatStamp(file.createdAt) }}
+                      </p>
+                    </div>
+                    <div class="flex items-center gap-2 flex-none">
+                      <button type="button" class="btn btn-ghost" (click)="download(file)">
+                        Download
+                      </button>
+                      @if (isStaff) {
+                        <button type="button" class="btn btn-danger" (click)="deleteAttachment(file)">
+                          Remove
+                        </button>
+                      }
+                    </div>
+                  </li>
+                }
+              </ul>
+            }
+
+            <div class="mt-5 pt-5 border-t border-ink-700">
+              <label for="upload" class="eyebrow">Attach a file</label>
+              <input
+                id="upload"
+                type="file"
+                class="well mt-2 file-well"
+                [disabled]="isUploading"
+                (change)="onFileSelected($event)" />
+              @if (isUploading) {
+                <p class="readout text-ink-400 mt-2">Uploading…</p>
+              }
+            </div>
+          }
+
+          @if (attachmentError) {
+            <p class="error-note mt-3" role="alert">{{ attachmentError }}</p>
+          }
+        </div>
+      }
+    </section>
+  }
 </div>

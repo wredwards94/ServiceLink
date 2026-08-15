@@ -1,34 +1,42 @@
-<div class="flex flex-col h-full w-64 bg-gray-800 px-4 py-6">
+<nav class="nav-rail" aria-label="Main">
+  <!-- Wordmark, set like the silkscreen on a rack unit. -->
+  <div class="px-5 pt-6 pb-8">
+    <span class="wordmark">ServiceLink</span>
+    <span class="eyebrow block mt-1">IT service desk</span>
+  </div>
 
-  <!-- Logo -->
-  <h1 class="text-xl font-bold text-indigo-400 mb-8 px-2">ServiceLink</h1>
+  <div class="flex-1 px-3">
+    <p class="eyebrow px-2 pb-2">Queue</p>
 
-  <!-- Nav Links -->
-  <nav class="flex flex-col gap-1 flex-1">
-    <a routerLink="/dashboard" routerLinkActive="bg-gray-700 text-white"
-       class="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-400 hover:bg-gray-700 hover:text-white transition-colors text-sm">
-      Dashboard
+    <a routerLink="/dashboard" routerLinkActive="is-active" class="nav-link">
+      <span class="nav-tick" aria-hidden="true"></span>
+      Overview
     </a>
 
-    <a routerLink="/tickets" routerLinkActive="bg-gray-700 text-white"
-       class="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-400 hover:bg-gray-700 hover:text-white transition-colors text-sm">
+    <a routerLink="/tickets" routerLinkActive="is-active" class="nav-link">
+      <span class="nav-tick" aria-hidden="true"></span>
       Tickets
     </a>
 
-    @if (role === 'ADMIN') {
-      <a routerLink="/admin/users" routerLinkActive="bg-gray-700 text-white"
-         class="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-400 hover:bg-gray-700 hover:text-white transition-colors text-sm">
-        User Management
+    @if (isAdmin) {
+      <p class="eyebrow px-2 pt-6 pb-2">Administration</p>
+
+      <a routerLink="/admin/users" routerLinkActive="is-active" class="nav-link">
+        <span class="nav-tick" aria-hidden="true"></span>
+        People
       </a>
     }
-  </nav>
+  </div>
 
-  <!-- User Info & Logout -->
-  <div class="border-t border-gray-700 pt-4">
-    <p class="text-xs text-gray-400 px-2 mb-2">{{ role }}</p>
-    <button (click)="logout()"
-            class="w-full text-left px-3 py-2 text-sm text-gray-400 hover:bg-gray-700 hover:text-white rounded-lg transition-colors">
-      Logout
+  <!-- Who is holding the console. -->
+  <div class="border-t border-ink-700 px-5 py-4">
+    @if (displayName) {
+      <p class="text-sm text-ink-100 truncate" [title]="displayName">{{ displayName }}</p>
+    }
+    <p class="callsign mt-0.5">{{ role }}</p>
+
+    <button type="button" (click)="logout()" class="btn btn-ghost w-full mt-3">
+      Sign out
     </button>
   </div>
-</div>
+</nav>

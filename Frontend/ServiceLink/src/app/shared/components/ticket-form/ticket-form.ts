@@ -1,8 +1,7 @@
-import { Component, EventEmitter, Output } from '@angular/core';
+import { Component, EventEmitter, HostListener, Output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { TicketService } from '../../../core/services/ticket.service';
-import { AuthService } from '../../../core/services/auth.service';
-import { Priority, TicketRequest } from '../../../models/ticket.model';
+import { PRIORITY_LABEL, Priority, TicketRequest } from '../../../models/ticket.model';
 
 @Component({
   selector: 'app-ticket-form',
@@ -11,46 +10,63 @@ import { Priority, TicketRequest } from '../../../models/ticket.model';
   styleUrl: './ticket-form.css',
 })
 export class TicketForm {
-  constructor(
-    private ticketService: TicketService,
-    private authService: AuthService,
-  ) {}
+  constructor(private ticketService: TicketService) {}
 
   @Output() closed = new EventEmitter<void>();
   @Output() ticketCreated = new EventEmitter<void>();
 
-  isSubmitting: boolean = false;
+  isSubmitting = false;
+  error: string | null = null;
 
   priorities = Object.values(Priority);
+  readonly priorityLabel = PRIORITY_LABEL;
 
+  /* New tickets are always NEW — TicketRequestDto has no status field, and the
+     entity defaults it. There is deliberately no status control here. */
   ticket: TicketRequest = {
     title: '',
     description: '',
-    priority: Priority.LOW,
+    priority: Priority.MEDIUM,
     category: '',
   };
 
+  get isValid(): boolean {
+    return !!(
+      this.ticket.title.trim() &&
+      this.ticket.description.trim() &&
+      this.ticket.category.trim()
+    );
+  }
+
+  @HostListener('document:keydown.escape')
   close(): void {
+    if (this.isSubmitting) return;
     this.closed.emit();
   }
 
   submit(): void {
-    if (!this.ticket.title || !this.ticket.description || !this.ticket.category) return;
-
-    const requesterId = this.authService.getUserId();
-    if (!requesterId) return;
+    if (!this.isValid || this.isSubmitting) return;
 
     this.isSubmitting = true;
-    this.ticketService.createTicket(this.ticket).subscribe({
-      next: () => {
-        this.isSubmitting = false;
-        this.ticketCreated.emit();
-        this.close();
-      },
-      error: (error) => {
-        console.error('Failed to create ticket', error);
-        this.isSubmitting = false;
-      },
-    });
+    this.error = null;
+
+    this.ticketService
+      .createTicket({
+        title: this.ticket.title.trim(),
+        description: this.ticket.description.trim(),
+        category: this.ticket.category.trim(),
+        priority: this.ticket.priority,
+      })
+      .subscribe({
+        next: () => {
+          this.isSubmitting = false;
+          this.ticketCreated.emit();
+        },
+        error: (err) => {
+          console.error('Failed to create ticket', err);
+          this.isSubmitting = false;
+          this.error = err.error?.message ?? 'Could not file the ticket. Try again.';
+        },
+      });
   }
 }

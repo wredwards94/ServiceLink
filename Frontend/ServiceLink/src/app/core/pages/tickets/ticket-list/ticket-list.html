@@ -1,135 +1,189 @@
-<div class="p-6">
+<div class="p-6 lg:p-8 max-w-7xl">
+  <header class="flex flex-wrap items-baseline justify-between gap-4 pb-6">
+    <div>
+      <h1 class="page-title">Tickets</h1>
+      <p class="eyebrow mt-1">Everything you can see</p>
+    </div>
 
-  <div class="flex justify-between items-center mb-4">
-    <h2 class="text-xl font-bold text-white">Tickets</h2>
-    <button (click)="showTicketForm = true"
-            class="bg-indigo-500 hover:bg-indigo-400 text-white text-sm px-4 py-2 rounded-md">
-      New Ticket
+    <button type="button" class="btn btn-primary" (click)="showTicketForm = true">
+      New ticket
     </button>
+  </header>
+
+  <!-- Filters compose: keyword, state, and priority narrow the same query
+       rather than replacing one another. -->
+  <div class="panel p-4 mb-6">
+    <div class="grid gap-3 md:grid-cols-[1fr_auto_auto_auto]">
+      <div>
+        <label for="q" class="sr-only">Search tickets</label>
+        <input
+          id="q"
+          type="search"
+          class="well"
+          placeholder="Search titles and descriptions"
+          [(ngModel)]="keyword"
+          (keyup.enter)="applyFilters()" />
+      </div>
+
+      <div>
+        <label for="state" class="sr-only">Filter by state</label>
+        <select id="state" class="well" [(ngModel)]="selectedStatus" (change)="applyFilters()">
+          <option value="">Any state</option>
+          @for (status of statuses; track status) {
+            <option [value]="status">{{ statusLabel[status] }}</option>
+          }
+        </select>
+      </div>
+
+      <div>
+        <label for="priority" class="sr-only">Filter by priority</label>
+        <select
+          id="priority"
+          class="well"
+          [(ngModel)]="selectedPriority"
+          (change)="applyFilters()">
+          <option value="">Any priority</option>
+          @for (priority of priorities; track priority) {
+            <option [value]="priority">{{ priorityLabel[priority] }}</option>
+          }
+        </select>
+      </div>
+
+      <button type="button" class="btn btn-ghost" (click)="applyFilters()">Search</button>
+    </div>
+
+    @if (hasFilters) {
+      <button type="button" class="callsign mt-3 hover:text-ink-000 underline" (click)="clearFilters()">
+        Clear filters
+      </button>
+    }
   </div>
 
-  <!-- Search and Filters -->
-  <div class="flex gap-4 mb-6">
-    <input
-      [(ngModel)]="keyword"
-      (keyup.enter)="search()"
-      type="text"
-      placeholder="Search tickets..."
-      class="flex-1 bg-gray-800 text-white text-sm rounded-lg px-4 py-2 outline-none border border-gray-700 focus:border-indigo-500"
-    />
-
-    <select
-      [(ngModel)]="selectedStatus"
-      (change)="filterByStatus()"
-      class="bg-gray-800 text-gray-400 text-sm rounded-lg px-4 py-2 border border-gray-700 focus:border-indigo-500 outline-none">
-      <option value="">All Statuses</option>
-      @for (status of statuses; track status) {
-        <option [value]="status">{{ status }}</option>
-      }
-    </select>
-
-    <select
-      [(ngModel)]="selectedPriority"
-      (change)="filterByPriority()"
-      class="bg-gray-800 text-gray-400 text-sm rounded-lg px-4 py-2 border border-gray-700 focus:border-indigo-500 outline-none">
-      <option value="">All Priorities</option>
-      @for (priority of priorities; track priority) {
-        <option [value]="priority">{{ priority }}</option>
-      }
-    </select>
-  </div>
-
-  <!-- Table -->
   @if (isLoading) {
-    <div class="text-center text-gray-400 py-8">Loading...</div>
+    <p class="readout text-ink-400 py-12">Loading tickets…</p>
   }
 
-  @if (!isLoading) {
-    <div class="overflow-hidden border border-gray-700 rounded-lg">
-      <table class="min-w-full divide-y divide-gray-700">
-        <thead class="bg-gray-800">
-        <tr>
-          <th class="py-3.5 px-4 text-sm font-normal text-left text-gray-400">Title</th>
-          <th class="px-4 py-3.5 text-sm font-normal text-left text-gray-400">Status</th>
-          <th class="px-4 py-3.5 text-sm font-normal text-left text-gray-400">Priority</th>
-          <th class="px-4 py-3.5 text-sm font-normal text-left text-gray-400">Category</th>
-          <th class="px-4 py-3.5 text-sm font-normal text-left text-gray-400">Created</th>
-          <th class="relative py-3.5 px-4"><span class="sr-only">Actions</span></th>
-        </tr>
-        </thead>
-        <tbody class="divide-y divide-gray-700 bg-gray-900">
-
-          @for (ticket of tickets; track ticket.id) {
-            <tr class="hover:bg-gray-800 cursor-pointer">
-              <td class="px-4 py-4 text-sm font-medium whitespace-nowrap">
-                <h2 class="font-medium text-white">{{ ticket.title }}</h2>
-                <p class="text-sm text-gray-400">{{ ticket.category }}</p>
-              </td>
-
-              <td class="px-4 py-4 text-sm whitespace-nowrap">
-                <span [ngClass]="{
-                  'text-blue-400 bg-blue-400/10': ticket.status === 'NEW',
-                  'text-yellow-400 bg-yellow-400/10': ticket.status === 'IN_PROGRESS',
-                  'text-green-400 bg-green-400/10': ticket.status === 'CLOSED'
-                }" class="inline px-3 py-1 text-sm font-normal rounded-full">
-                  {{ ticket.status }}
-                </span>
-              </td>
-
-              <td class="px-4 py-4 text-sm whitespace-nowrap">
-                <span [ngClass]="{
-                  'text-gray-400 bg-gray-400/10': ticket.priority === 'LOW',
-                  'text-blue-400 bg-blue-400/10': ticket.priority === 'MEDIUM',
-                  'text-orange-400 bg-orange-400/10': ticket.priority === 'HIGH',
-                  'text-red-400 bg-red-400/10': ticket.priority === 'CRITICAL'
-                }" class="inline px-3 py-1 text-sm font-normal rounded-full">
-                  {{ ticket.priority }}
-                </span>
-              </td>
-
-              <td class="px-4 py-4 text-sm text-gray-400 whitespace-nowrap">
-                {{ ticket.category }}
-              </td>
-
-              <td class="px-4 py-4 text-sm text-gray-400 whitespace-nowrap">
-                {{ ticket.createdAt }}
-              </td>
-
-              <td class="px-4 py-4 text-sm whitespace-nowrap relative">
-                <button (click)="toggleDropdown(ticket.id)"
-                        class="px-1 py-1 text-gray-400 transition-colors duration-200 rounded-lg hover:bg-gray-700">
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.75a.75.75 0 110-1.5.75.75 0 010 1.5zM12 12.75a.75.75 0 110-1.5.75.75 0 010 1.5zM12 18.75a.75.75 0 110-1.5.75.75 0 010 1.5z" />
-                  </svg>
-                </button>
-
-                @if (activeDropdown === ticket.id) {
-                  <div class="absolute right-0 z-10 mt-1 w-36 bg-gray-800 border border-gray-700 rounded-lg shadow-lg overflow-hidden">
-                    <button (click)="viewTicket(ticket.id)"
-                            class="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-gray-700">
-                      View
-                    </button>
-                    <div class="border-t border-gray-700"></div>
-                    <button (click)="deleteTicket(ticket.id)"
-                            class="w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-gray-700">
-                      Delete
-                    </button>
-                  </div>
-                }
-              </td>
-            </tr>
-          }
-
-          @if (tickets.length === 0) {
-            <tr>
-              <td colspan="6" class="px-4 py-8 text-sm text-center text-gray-400">
-                No tickets found.
-              </td>
-            </tr>
-          }
-
-        </tbody>
-      </table>
+  @if (loadError) {
+    <div class="panel p-6">
+      <p class="text-sm text-sev-critical">{{ loadError }}</p>
+      <button type="button" class="btn btn-ghost mt-4" (click)="load()">Try again</button>
     </div>
   }
+
+  @if (!isLoading && !loadError) {
+    @if (rows.length === 0) {
+      <div class="panel p-10 text-center">
+        <p class="eyebrow">{{ hasFilters ? 'No matches' : 'No tickets yet' }}</p>
+        <p class="text-sm text-ink-300 mt-3 max-w-sm mx-auto">
+          {{
+            hasFilters
+              ? 'Nothing matches those filters. Widen them, or clear them to see the whole queue.'
+              : 'File the first one and it lands here as New.'
+          }}
+        </p>
+        @if (hasFilters) {
+          <button type="button" class="btn btn-ghost mt-6" (click)="clearFilters()">
+            Clear filters
+          </button>
+        } @else {
+          <button type="button" class="btn btn-primary mt-6" (click)="showTicketForm = true">
+            New ticket
+          </button>
+        }
+      </div>
+    } @else {
+      <section class="panel">
+        <div class="overflow-x-auto">
+          <table class="w-full">
+            <thead>
+              <tr class="border-b border-ink-700">
+                <th scope="col" class="th">Ticket</th>
+                <th scope="col" class="th">Progress</th>
+                <th scope="col" class="th">State</th>
+                <th scope="col" class="th">Priority</th>
+                <th scope="col" class="th">Owner</th>
+                <th scope="col" class="th th-num">Quiet for</th>
+                @if (isStaff) {
+                  <th scope="col" class="th th-num"><span class="sr-only">Actions</span></th>
+                }
+              </tr>
+            </thead>
+            <tbody>
+              @for (row of rows; track row.ticket.id) {
+                <tr class="row" (click)="viewTicket(row.ticket.id)">
+                  <td class="td">
+                    <a
+                      class="row-link"
+                      [routerLink]="['/tickets', row.ticket.id]"
+                      (click)="$event.stopPropagation()">
+                      {{ row.ticket.title }}
+                    </a>
+                    <span class="callsign block mt-0.5">
+                      SL-{{ row.ticket.id }} · {{ row.ticket.category }}
+                    </span>
+                  </td>
+                  <td class="td">
+                    <app-lifecycle-rail [status]="row.ticket.status" [compact]="true" />
+                  </td>
+                  <td class="td">
+                    <span [class]="row.statusClass">{{ row.statusLabel }}</span>
+                  </td>
+                  <td class="td">
+                    <span [class]="row.priorityClass">{{ row.priorityLabel }}</span>
+                  </td>
+                  <td class="td">
+                    @if (row.owner) {
+                      <span class="text-ink-100">{{ row.owner }}</span>
+                    } @else {
+                      <span class="unowned">Unassigned</span>
+                    }
+                  </td>
+                  <td class="td td-num readout">{{ row.dwell }}</td>
+                  @if (isStaff) {
+                    <td class="td td-num">
+                      <button
+                        type="button"
+                        class="btn btn-danger"
+                        (click)="deleteTicket(row.ticket.id, $event)">
+                        Delete
+                      </button>
+                    </td>
+                  }
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+
+        @if (totalPages > 1) {
+          <div class="flex items-center justify-between gap-4 px-5 py-3 border-t border-ink-700">
+            <p class="readout text-ink-400">
+              {{ rangeStart }}–{{ rangeEnd }} of {{ totalElements }}
+            </p>
+            <div class="flex items-center gap-2">
+              <button
+                type="button"
+                class="btn btn-ghost"
+                [disabled]="page === 0"
+                (click)="goToPage(page - 1)">
+                Previous
+              </button>
+              <p class="readout text-ink-400 px-1">{{ page + 1 }} / {{ totalPages }}</p>
+              <button
+                type="button"
+                class="btn btn-ghost"
+                [disabled]="page >= totalPages - 1"
+                (click)="goToPage(page + 1)">
+                Next
+              </button>
+            </div>
+          </div>
+        }
+      </section>
+    }
+  }
 </div>
+
+@if (showTicketForm) {
+  <app-ticket-form (closed)="showTicketForm = false" (ticketCreated)="onTicketCreated()" />
+}

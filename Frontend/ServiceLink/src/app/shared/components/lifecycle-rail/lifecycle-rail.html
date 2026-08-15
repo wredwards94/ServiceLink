@@ -1,0 +1,88 @@
+@if (compact) {
+  <!-- Row variant: four pips, no labels. Reads as position-along-the-line at a
+       glance without competing with the title beside it. -->
+  <span class="pips" [attr.aria-label]="railDescription">
+    @for (station of mainStations; track station.status) {
+      <span class="pip" [class]="'is-' + station.state"></span>
+    }
+    @if (status === onHold) {
+      <span class="pip-flag">held</span>
+    }
+    @if (status === reopened) {
+      <span class="pip-flag">back</span>
+    }
+  </span>
+} @else {
+  <div class="rail" role="group" [attr.aria-label]="railDescription">
+    <!-- Siding: ON_HOLD parks work that is in progress. -->
+    <div class="rail-track rail-siding">
+      <div class="rail-slot" style="grid-column: 2">
+        @if (interactive && holdStation.state === 'open') {
+          <button
+            type="button"
+            class="station is-open"
+            [disabled]="!!pending"
+            (click)="onStation(holdStation)">
+            <span class="station-node"></span>
+            <span class="station-label">{{ holdStation.label }}</span>
+          </button>
+        } @else {
+          <span class="station" [class]="'is-' + holdStation.state">
+            <span class="station-node"></span>
+            <span class="station-label">{{ holdStation.label }}</span>
+          </span>
+        }
+      </div>
+    </div>
+
+    <!-- Main line: NEW → IN_PROGRESS → RESOLVED → CLOSED -->
+    <div class="rail-track rail-main">
+      @for (station of mainStations; track station.status; let i = $index) {
+        <div
+          class="rail-slot"
+          [class.has-connector]="i > 0"
+          [class.connector-live]="i > 0 && (station.state === 'spent' || station.state === 'live')">
+          @if (interactive && station.state === 'open') {
+            <button
+              type="button"
+              class="station is-open"
+              [disabled]="!!pending"
+              (click)="onStation(station)">
+              <span class="station-node" [class.is-pending]="pending === station.status"></span>
+              <span class="station-label">{{ station.label }}</span>
+            </button>
+          } @else {
+            <span
+              class="station"
+              [class]="'is-' + station.state"
+              [attr.aria-current]="station.state === 'live' ? 'step' : null">
+              <span class="station-node"></span>
+              <span class="station-label">{{ station.label }}</span>
+            </span>
+          }
+        </div>
+      }
+    </div>
+
+    <!-- Return: REOPENED sends a resolved or closed ticket back to the work phase. -->
+    <div class="rail-track rail-return">
+      <div class="rail-slot" style="grid-column: 2 / 5">
+        @if (interactive && reopenStation.state === 'open') {
+          <button
+            type="button"
+            class="station is-open"
+            [disabled]="!!pending"
+            (click)="onStation(reopenStation)">
+            <span class="station-node"></span>
+            <span class="station-label">{{ reopenStation.label }}</span>
+          </button>
+        } @else {
+          <span class="station" [class]="'is-' + reopenStation.state">
+            <span class="station-node"></span>
+            <span class="station-label">{{ reopenStation.label }}</span>
+          </span>
+        }
+      </div>
+    </div>
+  </div>
+}

@@ -1,1 +1,442 @@
-@import "tailwindcss";/* You can add global styles to this file, and also import other style files */
+@import "tailwindcss";
+
+/* ==========================================================================
+   ServiceLink — "Instrumentation" design system
+   --------------------------------------------------------------------------
+   One rule governs colour: chroma is reserved for urgency.
+
+   The ten INK steps carry every surface, rule, and glyph in the app. The only
+   saturated values in the entire palette are the four SEVERITY steps, which map
+   1:1 onto enums/TicketPriority.java. Nothing decorative is allowed to borrow
+   them — if something on screen is coloured, it is because it is urgent.
+
+   The status lifecycle (enums/TicketStatus.java) therefore reads in luminance
+   only: a station is bright because it is where the ticket *is*, not because
+   its state has a house colour. This keeps the two axes — how bad, and how far
+   along — legible independently of one another.
+   ========================================================================== */
+
+@theme {
+  /* --- Ink: the whole non-urgent world ---------------------------------- */
+  --color-ink-950: #070a0e; /* page ground */
+  --color-ink-900: #0b1017; /* panel ground */
+  --color-ink-850: #111823; /* raised panel */
+  --color-ink-800: #18212e; /* control / input well */
+  --color-ink-700: #222e3e; /* hairline border */
+  --color-ink-600: #33445a; /* rule, spent lifecycle station */
+  --color-ink-400: #6b819b; /* muted / disabled glyph */
+  --color-ink-300: #94a8c0; /* secondary text */
+  --color-ink-100: #dce7f3; /* primary text */
+  --color-ink-000: #f5f9ff; /* emphasis, live station */
+
+  /* --- Severity: the only chroma, a calibrated cool→hot ramp ------------- */
+  --color-sev-low: #4c7285;
+  --color-sev-medium: #2e9bdb;
+  --color-sev-high: #f2a32c;
+  --color-sev-critical: #ff4a38;
+
+  /* --- Type: one superfamily, three roles -------------------------------- */
+  --font-display: "IBM Plex Sans Condensed", "Helvetica Neue", sans-serif;
+  --font-sans: "IBM Plex Sans", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", monospace;
+
+  /* --- Scale: instrument labelling is small, tight, and uppercase -------- */
+  --text-eyebrow: 0.6875rem;
+  --text-eyebrow--line-height: 1rem;
+  --text-eyebrow--letter-spacing: 0.14em;
+  --text-readout: 0.8125rem;
+  --text-readout--line-height: 1.125rem;
+
+  /* --- Graticule: the instrument screen behind everything ---------------- */
+  --graticule-minor: 8px;
+  --graticule-major: 64px;
+}
+
+/* ==========================================================================
+   Base
+   ========================================================================== */
+
+@layer base {
+  html {
+    background-color: var(--color-ink-950);
+    color-scheme: dark;
+  }
+
+  body {
+    background-color: var(--color-ink-950);
+    color: var(--color-ink-100);
+    font-family: var(--font-sans);
+    font-feature-settings: "cv05" 1; /* single-storey g, closer to the mono */
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* One focus treatment everywhere. Luminance, not chroma — a focus ring is
+     not an urgency signal and must never be mistaken for one. */
+  :focus-visible {
+    outline: 2px solid var(--color-ink-000);
+    outline-offset: 2px;
+    border-radius: 1px;
+  }
+
+  ::selection {
+    background: var(--color-ink-600);
+    color: var(--color-ink-000);
+  }
+
+  /* Native controls sit on dark wells; keep their popups dark too. */
+  select option {
+    background: var(--color-ink-850);
+    color: var(--color-ink-100);
+  }
+}
+
+/* ==========================================================================
+   Components
+   ========================================================================== */
+
+@layer components {
+  /* --- The instrument screen --------------------------------------------
+     A measurement graticule, 8px minor over 64px major. It is the atmosphere
+     the whole app sits on and the surface the lifecycle rail traces across.
+     Kept under 4% luminance so it reads as texture, never as content. */
+  .graticule {
+    background-image:
+      linear-gradient(to right, rgb(255 255 255 / 0.028) 1px, transparent 1px),
+      linear-gradient(to bottom, rgb(255 255 255 / 0.028) 1px, transparent 1px),
+      linear-gradient(to right, rgb(255 255 255 / 0.016) 1px, transparent 1px),
+      linear-gradient(to bottom, rgb(255 255 255 / 0.016) 1px, transparent 1px);
+    background-size:
+      var(--graticule-major) var(--graticule-major),
+      var(--graticule-major) var(--graticule-major),
+      var(--graticule-minor) var(--graticule-minor),
+      var(--graticule-minor) var(--graticule-minor);
+  }
+
+  /* --- Panels ------------------------------------------------------------
+     Square corners throughout. An instrument panel is machined, not moulded;
+     the 1px hairline is the only edge treatment in the system. */
+  .panel {
+    background-color: var(--color-ink-900);
+    border: 1px solid var(--color-ink-700);
+  }
+
+  .panel-raised {
+    background-color: var(--color-ink-850);
+    border: 1px solid var(--color-ink-700);
+  }
+
+  /* --- Eyebrow -----------------------------------------------------------
+     Every panel is labelled the way a rack unit is labelled. */
+  .eyebrow {
+    font-family: var(--font-display);
+    font-size: var(--text-eyebrow);
+    line-height: 1rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    font-weight: 600;
+    color: var(--color-ink-400);
+  }
+
+  /* --- Readout -----------------------------------------------------------
+     Anything the machine measured rather than a human wrote: IDs, counts,
+     timestamps, dwell. Tabular figures so columns of numbers align. */
+  .readout {
+    font-family: var(--font-mono);
+    font-size: var(--text-readout);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.01em;
+  }
+
+  /* --- Call sign ---------------------------------------------------------
+     A ticket's identity, set like a silkscreened rack label. */
+  .callsign {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.02em;
+    color: var(--color-ink-400);
+  }
+
+  /* --- Controls ----------------------------------------------------------
+     Inputs are wells cut into the panel: darker than their surround, with the
+     hairline continuing across them. */
+  .well {
+    background-color: var(--color-ink-800);
+    border: 1px solid var(--color-ink-700);
+    color: var(--color-ink-100);
+    font-family: var(--font-sans);
+    font-size: 0.875rem;
+    padding: 0.5rem 0.75rem;
+    width: 100%;
+  }
+
+  .well::placeholder {
+    color: var(--color-ink-400);
+  }
+
+  .well:hover:not(:disabled) {
+    border-color: var(--color-ink-600);
+  }
+
+  .well:disabled {
+    color: var(--color-ink-400);
+    cursor: not-allowed;
+  }
+
+  /* Primary action: bright ink, not a brand colour. The brightest thing in a
+     region is the thing to press. */
+  .btn {
+    font-family: var(--font-display);
+    font-size: 0.8125rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 0.5rem 1rem;
+    border: 1px solid transparent;
+    cursor: pointer;
+    white-space: nowrap;
+    transition:
+      background-color 120ms ease,
+      border-color 120ms ease,
+      color 120ms ease;
+  }
+
+  .btn-primary {
+    background-color: var(--color-ink-000);
+    color: var(--color-ink-950);
+  }
+
+  .btn-primary:hover:not(:disabled) {
+    background-color: #ffffff;
+  }
+
+  .btn-ghost {
+    background-color: transparent;
+    border-color: var(--color-ink-600);
+    color: var(--color-ink-300);
+  }
+
+  .btn-ghost:hover:not(:disabled) {
+    border-color: var(--color-ink-400);
+    color: var(--color-ink-000);
+  }
+
+  /* Destructive borrows the critical step deliberately: red means exactly one
+     thing in this app — this will hurt — whether it is a priority or a verb. */
+  .btn-danger {
+    background-color: transparent;
+    border-color: color-mix(in srgb, var(--color-sev-critical) 40%, transparent);
+    color: var(--color-sev-critical);
+  }
+
+  .btn-danger:hover:not(:disabled) {
+    background-color: color-mix(in srgb, var(--color-sev-critical) 12%, transparent);
+    border-color: var(--color-sev-critical);
+  }
+
+  .btn:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+  }
+
+  /* --- Severity chip -----------------------------------------------------
+     The four literal classes below exist so Tailwind's source scan is not
+     involved at all: these are hand-authored, not generated. See
+     FRONTEND-RESYNC-PLAN.md item 17 — interpolated class names would not
+     survive the scan, so the priority map in TypeScript returns these names. */
+  .sev {
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 0.125rem 0.4375rem;
+    border: 1px solid;
+    white-space: nowrap;
+  }
+
+  .sev-low {
+    color: var(--color-sev-low);
+    border-color: color-mix(in srgb, var(--color-sev-low) 45%, transparent);
+    background-color: color-mix(in srgb, var(--color-sev-low) 12%, transparent);
+  }
+
+  .sev-medium {
+    color: var(--color-sev-medium);
+    border-color: color-mix(in srgb, var(--color-sev-medium) 45%, transparent);
+    background-color: color-mix(in srgb, var(--color-sev-medium) 12%, transparent);
+  }
+
+  .sev-high {
+    color: var(--color-sev-high);
+    border-color: color-mix(in srgb, var(--color-sev-high) 45%, transparent);
+    background-color: color-mix(in srgb, var(--color-sev-high) 12%, transparent);
+  }
+
+  .sev-critical {
+    color: var(--color-sev-critical);
+    border-color: color-mix(in srgb, var(--color-sev-critical) 50%, transparent);
+    background-color: color-mix(in srgb, var(--color-sev-critical) 14%, transparent);
+  }
+
+  /* --- Error note --------------------------------------------------------
+     Errors say what happened and what to do about it, in the interface's
+     voice. They carry the critical step because a blocked action is the one
+     kind of urgency that is not a ticket priority. */
+  .error-note {
+    font-size: 0.8125rem;
+    line-height: 1.25rem;
+    color: var(--color-sev-critical);
+    border-left: 2px solid var(--color-sev-critical);
+    padding-left: 0.625rem;
+  }
+
+  /* --- Page title --------------------------------------------------------- */
+  .page-title {
+    font-family: var(--font-display);
+    font-size: 1.5rem;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    color: var(--color-ink-000);
+    line-height: 1.1;
+  }
+
+  /* --- Tables ------------------------------------------------------------
+     Data is dense by default. Rules are hairlines, headers are instrument
+     labels, and numeric columns are right-aligned and tabular so they can be
+     compared down the column rather than read one at a time. */
+  .th {
+    font-family: var(--font-display);
+    font-size: var(--text-eyebrow);
+    line-height: 1rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    font-weight: 600;
+    color: var(--color-ink-400);
+    text-align: left;
+    padding: 0.625rem 1rem;
+    white-space: nowrap;
+  }
+
+  .th-num {
+    text-align: right;
+  }
+
+  .td {
+    padding: 0.75rem 1rem;
+    font-size: 0.875rem;
+    color: var(--color-ink-300);
+    vertical-align: top;
+  }
+
+  .td-num {
+    text-align: right;
+    white-space: nowrap;
+    color: var(--color-ink-100);
+  }
+
+  .row {
+    border-bottom: 1px solid var(--color-ink-700);
+    cursor: pointer;
+    transition: background-color 100ms ease;
+  }
+
+  .row:last-child {
+    border-bottom: 0;
+  }
+
+  .row:hover {
+    background-color: var(--color-ink-850);
+  }
+
+  .row-link {
+    font-weight: 500;
+    color: var(--color-ink-100);
+  }
+
+  .row:hover .row-link {
+    color: var(--color-ink-000);
+  }
+
+  /* --- Status token ------------------------------------------------------
+     Luminance-only, per the rule at the top of this file. A terminal state is
+     dimmer than a live one; that is the entire encoding. */
+  .state {
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    padding: 0.125rem 0.4375rem;
+    border: 1px solid var(--color-ink-700);
+    white-space: nowrap;
+  }
+
+  .state-live {
+    color: var(--color-ink-000);
+    border-color: var(--color-ink-600);
+    background-color: var(--color-ink-800);
+  }
+
+  .state-held {
+    color: var(--color-ink-300);
+    border-color: var(--color-ink-700);
+    background-color: transparent;
+    border-style: dashed;
+  }
+
+  .state-done {
+    color: var(--color-ink-400);
+    border-color: var(--color-ink-700);
+    background-color: transparent;
+  }
+}
+
+/* ==========================================================================
+   Motion
+   --------------------------------------------------------------------------
+   Motion is used in exactly two places: the lifecycle rail's live station
+   breathes, and panels settle on first paint. Everything else is static.
+   ========================================================================== */
+
+@layer utilities {
+  @keyframes station-pulse {
+    0%,
+    100% {
+      box-shadow: 0 0 0 0 rgb(245 249 255 / 0.5);
+    }
+    50% {
+      box-shadow: 0 0 0 5px rgb(245 249 255 / 0);
+    }
+  }
+
+  .animate-station {
+    animation: station-pulse 2.4s ease-out infinite;
+  }
+
+  @keyframes settle {
+    from {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  .animate-settle {
+    animation: settle 260ms ease-out both;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

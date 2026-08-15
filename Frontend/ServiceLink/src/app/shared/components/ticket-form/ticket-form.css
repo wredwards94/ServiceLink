@@ -1,0 +1,32 @@
+.scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: rgb(3 5 8 / 0.72);
+}
+
+/* Centring is done by the flex wrapper, never by a transform on the sheet
+   itself. The sheet runs the settle keyframe, whose `to` state sets
+   `transform: none` — an animation outranks a normal declaration, and
+   `fill-mode: both` makes that final state stick, so a centring transform on
+   the same element would be wiped the moment the animation landed. */
+.sheet-wrap {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  /* Clicks in the margin around the sheet fall through to the scrim, which
+     closes the dialog. */
+  pointer-events: none;
+}
+
+.sheet {
+  pointer-events: auto;
+  width: 100%;
+  max-width: 34rem;
+  max-height: calc(100vh - 2rem);
+  overflow-y: auto;
+}
