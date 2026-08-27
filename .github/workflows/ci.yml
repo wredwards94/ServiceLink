@@ -35,3 +35,37 @@ jobs:
 
       - name: Build and test
         run: ./mvnw -B --no-transfer-progress verify
+
+  frontend:
+    name: Frontend Build & Test
+    runs-on: ubuntu-latest
+
+    # The Angular app lives in Frontend/ServiceLink/. Note the capital S: that
+    # is the path Git tracks, and CI runs on a case-sensitive filesystem, so
+    # the lowercase spelling a macOS shell reports here would not resolve.
+    defaults:
+      run:
+        working-directory: Frontend/ServiceLink
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v4
+        with:
+          # @angular/cli 21 requires ^20.19 || ^22.12 || >=24.
+          node-version: "22.12"
+          cache: npm
+          cache-dependency-path: Frontend/ServiceLink/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      # vitest runs once and exits — there is no watch mode to disable, and
+      # `ng test --run` is rejected as an unknown argument.
+      - name: Test
+        run: npm test
