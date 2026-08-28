@@ -34,7 +34,10 @@ public class Comment {
     @JsonBackReference(value = "commentAuthor")
     private User author; // Reference to the User who made the comment
 
-    @Column(nullable = false)
+    // length must match CommentRequestDto's @Size(max = 500). Without it
+    // Hibernate emits varchar(255) and a 256-500 char comment passes bean
+    // validation, then fails on INSERT as an unhandled 500.
+    @Column(nullable = false, length = 500)
     private String content;
 
     @Column(nullable = false)

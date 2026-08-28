@@ -41,6 +41,26 @@
 			<artifactId>spring-boot-starter-web</artifactId>
 		</dependency>
 
+		<!-- Health endpoints for the Kubernetes liveness/readiness probes.
+		     /actuator/health/liveness and /readiness are exposed by the prod
+		     profile; everything else stays off. -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-actuator</artifactId>
+		</dependency>
+
+		<!-- Versioned schema migrations. Replaces ddl-auto=create-drop, which
+		     drops the entire database on every startup — fine for a local
+		     scratch DB, fatal for a deployed environment. -->
+		<dependency>
+			<groupId>org.flywaydb</groupId>
+			<artifactId>flyway-core</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.flywaydb</groupId>
+			<artifactId>flyway-database-postgresql</artifactId>
+		</dependency>
+
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-devtools</artifactId>

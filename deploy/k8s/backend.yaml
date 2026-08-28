@@ -1,0 +1,106 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend
+  namespace: servicelink
+spec:
+  selector:
+    app: backend
+  ports:
+    - port: 8080
+      targetPort: 8080
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+  namespace: servicelink
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: backend
+  strategy:
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  template:
+    metadata:
+      labels:
+        app: backend
+    spec:
+      # Flyway runs at application startup, so the app must not come up before
+      # Postgres accepts connections. An initContainer is a blunt but reliable
+      # gate; without it the first rollout after a cluster restart can crashloop
+      # a few times before settling.
+      initContainers:
+        - name: wait-for-postgres
+          image: postgres:16-alpine
+          command:
+            - sh
+            - -c
+            - until pg_isready -h postgres -p 5432 -U "$PGUSER"; do echo "waiting for postgres"; sleep 2; done
+          env:
+            - name: PGUSER
+              valueFrom:
+                secretKeyRef:
+                  name: servicelink-secrets
+                  key: postgres-user
+      containers:
+        - name: backend
+          image: ghcr.io/wredwards94/servicelink-backend:latest
+          ports:
+            - containerPort: 8080
+          env:
+            - name: SPRING_DATASOURCE_URL
+              value: jdbc:postgresql://postgres:5432/servicelink
+            - name: SPRING_DATASOURCE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: servicelink-secrets
+                  key: postgres-user
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: servicelink-secrets
+                  key: postgres-password
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: servicelink-secrets
+                  key: jwt-secret
+          # Liveness restarts a wedged process; readiness gates traffic. They are
+          # split deliberately: a slow first boot (Flyway migrating) must delay
+          # traffic, not trigger a restart loop.
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            failureThreshold: 12
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8080
+            initialDelaySeconds: 60
+            periodSeconds: 15
+          resources:
+            requests:
+              memory: 512Mi
+              cpu: 200m
+            limits:
+              memory: 1Gi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            # readOnlyRootFilesystem still needs somewhere for the JVM's temp
+            # files and Tomcat's work directory.
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}

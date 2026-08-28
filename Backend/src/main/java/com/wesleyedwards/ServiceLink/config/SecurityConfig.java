@@ -1,6 +1,7 @@
 package com.wesleyedwards.ServiceLink.config;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -26,6 +27,17 @@ import java.util.Arrays;
 @RequiredArgsConstructor
 public class SecurityConfig {
 
+    /**
+     * Comma-separated origins allowed to call the API cross-origin.
+     *
+     * Empty in the deployed setup on purpose: the Ingress serves the frontend
+     * and the API from one host (/ and /api), so the browser never makes a
+     * cross-origin request and nothing needs allowing. The dev default covers
+     * `ng serve` on 4200 talking to Boot on 8080.
+     */
+    @Value("${servicelink.cors.allowed-origins:http://localhost:4200}")
+    private String allowedOrigins;
+
     private final JwtAuthFilter jwtAuthFilter;
     private final UserDetailsService userDetailsService;
     private final PasswordEncoder passwordEncoder;
@@ -38,6 +50,11 @@ public class SecurityConfig {
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
+                        // Kubernetes probes cannot authenticate. Only the health
+                        // groups are open, and management.endpoint.health.show-details
+                        // is `never`, so the body is just {"status":"UP"} — no
+                        // component or version detail leaks.
+                        .requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
                         .requestMatchers("/api/users/auth/**").permitAll()
                         // tickets — specific method rules first, broad (PUT/PATCH/DELETE) last
                         .requestMatchers(HttpMethod.GET, "/api/tickets/**").hasAnyRole("ADMIN", "AGENT", "USER")
@@ -69,7 +86,11 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(Arrays.asList("http://localhost:4200"));
+        configuration.setAllowedOrigins(
+                Arrays.stream(allowedOrigins.split(","))
+                        .map(String::trim)
+                        .filter(origin -> !origin.isEmpty())
+                        .toList());
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type"));
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();

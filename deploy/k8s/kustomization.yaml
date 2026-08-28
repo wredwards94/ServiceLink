@@ -1,0 +1,24 @@
+# `kubectl apply -k deploy/k8s` applies everything below.
+#
+# The images block is what CI rewrites: the deploy job runs
+# `kustomize edit set image ...` with the commit-tagged digest, so the manifests
+# stay free of a moving :latest tag and every rollout is traceable to a commit.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: servicelink
+
+resources:
+  - namespace.yaml
+  - postgres.yaml
+  - backend.yaml
+  - frontend.yaml
+  - ingress.yaml
+  # secret.example.yaml is intentionally NOT listed — the real secret is created
+  # out of band so credentials never live in Git.
+
+images:
+  - name: ghcr.io/wredwards94/servicelink-backend
+    newTag: latest
+  - name: ghcr.io/wredwards94/servicelink-frontend
+    newTag: latest

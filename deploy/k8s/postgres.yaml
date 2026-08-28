@@ -1,0 +1,90 @@
+# Postgres for the ServiceLink test environment.
+#
+# A StatefulSet rather than a Deployment: the volumeClaimTemplate binds this pod
+# to one PVC for its lifetime, which is what you want for a database. A
+# Deployment with a PVC works until you scale or roll it and two pods reach for
+# the same volume.
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  namespace: servicelink
+spec:
+  # Headless: the StatefulSet gets a stable DNS name and no load balancing,
+  # which is meaningless for a single writable database anyway.
+  clusterIP: None
+  selector:
+    app: postgres
+  ports:
+    - port: 5432
+      targetPort: 5432
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres
+  namespace: servicelink
+spec:
+  serviceName: postgres
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16-alpine
+          ports:
+            - containerPort: 5432
+          env:
+            - name: POSTGRES_DB
+              value: servicelink
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: servicelink-secrets
+                  key: postgres-user
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: servicelink-secrets
+                  key: postgres-password
+            # The image only initialises a database when PGDATA is empty, and it
+            # refuses to initialise into a directory that already has the
+            # lost+found a mounted volume brings. A subdirectory sidesteps that.
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "postgres", "-d", "servicelink"]
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          livenessProbe:
+            exec:
+              command: ["pg_isready", "-U", "postgres", "-d", "servicelink"]
+            initialDelaySeconds: 30
+            periodSeconds: 15
+          resources:
+            requests:
+              memory: 256Mi
+              cpu: 100m
+            limits:
+              memory: 1Gi
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        # k3s ships local-path as its default provisioner. Change this if your
+        # cluster uses Longhorn, NFS, or similar.
+        storageClassName: local-path
+        resources:
+          requests:
+            storage: 5Gi
