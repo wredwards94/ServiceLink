@@ -1,0 +1,36 @@
+# One host serves both halves. This is what makes the same-origin design work:
+# the browser only ever talks to servicelink.home.arpa, so there is no CORS to
+# configure and the frontend image carries no baked-in API hostname.
+#
+# Change the host to whatever you actually use. If your ingress controller is
+# not Traefik (k3s bundles Traefik and enables it by default), change
+# ingressClassName to match — nginx, for instance.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: servicelink
+  namespace: servicelink
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: servicelink.home.arpa
+      http:
+        paths:
+          # More specific first for readability. Ingress matching is
+          # longest-prefix regardless, so /api wins over / either way.
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: backend
+                port:
+                  number: 8080
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend
+                port:
+                  number: 8080
+  # /actuator is deliberately NOT routed. The probes reach it pod-locally over
+  # the kubelet, so there is no reason to publish health endpoints on the LAN.

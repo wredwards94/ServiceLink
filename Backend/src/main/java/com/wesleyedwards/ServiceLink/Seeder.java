@@ -16,7 +16,9 @@ import java.util.*;
 
 @Component
 // Fully qualified to avoid clashing with the entities.Profile wildcard import below.
-@org.springframework.context.annotation.Profile("!test")
+// Never in a deployed environment: this fabricates users (including an ADMIN)
+// and tickets on every boot. "!test" alone left it running under prod.
+@org.springframework.context.annotation.Profile("!test & !prod")
 @RequiredArgsConstructor
 public class Seeder implements CommandLineRunner {
 

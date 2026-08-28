@@ -32,6 +32,10 @@ public class Ticket {
     private Long id;
 
     private String title;
+
+    // Free text with no length guard in the DTO or the UI, so varchar(255)
+    // (Hibernate's default) would reject any real description.
+    @Column(columnDefinition = "text")
     private String description;
 
     @Enumerated(EnumType.STRING)
